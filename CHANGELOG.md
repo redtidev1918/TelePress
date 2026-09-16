@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.8.1](https://github.com/redtidev1918/telepress/compare/v0.8.0...v0.8.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* match should_publish_pypi output and dispatch dry_run check ([446711b](https://github.com/redtidev1918/telepress/commit/446711bab47714cd5b3ef196411a9c5d09462cbc))
+
 ## [0.8.0](https://github.com/redtidev1918/telepress/compare/v0.7.0...v0.8.0) (2026-09-16)
 
 
