@@ -4,6 +4,19 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.8.0](https://github.com/redtidev1918/telepress/compare/v0.7.0...v0.8.0) (2026-09-16)
+
+
+### Features
+
+* expand hosting providers and caller-owned PyPI publishing ([#26](https://github.com/redtidev1918/telepress/issues/26)) ([d141bce](https://github.com/redtidev1918/telepress/commit/d141bce489e0f632125b9464516ca27548dd7870))
+
+
+### Bug Fixes
+
+* correct repair workflow_dispatch input comparison ([bd75fba](https://github.com/redtidev1918/telepress/commit/bd75fbab599da19efdfcda7a6c859e12158e9fc8))
+* stage only wheel and sdist for PyPI upload ([4cced44](https://github.com/redtidev1918/telepress/commit/4cced44b1f23553b2fbae9d1167a52ee9cf5b0f0))
+
 ## [0.7.0](https://github.com/redtidev1918/telepress/compare/v0.6.2...v0.7.0) (2026-09-16)
 
 
