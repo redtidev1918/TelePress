@@ -23,7 +23,7 @@ permissions:
 jobs:
   release:
     if: github.event_name != 'workflow_dispatch' || !(toJSON(github.event.inputs.repair) == 'true' && github.event.inputs.stage == 'pypi')
-    uses: redtidev1918/releasegraph/.github/workflows/reusable-release.yml@3beb6bc9edf4ebfe2eaefd21826c65d8b9437153 # ReleaseGraph 3beb6bc
+    uses: redtidev1918/releasegraph/.github/workflows/reusable-release.yml@a4538651e8d37df394f7277ab4a26e567d4bdd17 # ReleaseGraph a453865
     with:
       version: ${{ inputs.version || '' }}
       dry_run: ${{ github.event_name == 'pull_request' || inputs.dry_run || false }}
