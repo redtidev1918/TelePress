@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   release:
-    if: github.event_name != 'workflow_dispatch' || !(toJSON(github.event.inputs.repair) == 'true' && github.event.inputs.stage == 'pypi')
+    if: github.event_name != 'workflow_dispatch' || !(github.event.inputs.repair == 'true' && github.event.inputs.stage == 'pypi')
     uses: redtidev1918/releasegraph/.github/workflows/reusable-release.yml@a4538651e8d37df394f7277ab4a26e567d4bdd17 # ReleaseGraph a453865
     with:
       version: ${{ inputs.version || '' }}
@@ -106,7 +106,7 @@ jobs:
           packages-dir: dist
 
   repair-pypi:
-    if: github.event_name == 'workflow_dispatch' && toJSON(github.event.inputs.repair) == 'true' && github.event.inputs.stage == 'pypi'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.repair == 'true' && github.event.inputs.stage == 'pypi'
     runs-on: ubuntu-latest
     environment:
       name: pypi
