@@ -8,6 +8,8 @@ import shutil
 import tempfile
 import subprocess
 import base64
+import hashlib
+import time
 import requests
 from typing import Optional, Dict, Any, List, Union
 from abc import ABC, abstractmethod
@@ -217,6 +219,309 @@ class CatboxHost(ImageHost):
             raise UploadError(
                 f"catbox upload failed: invalid response: {url[:200]}"
             )
+        return url
+
+
+
+
+class FreeImageHost(ImageHost):
+    """freeimage.host image hosting (requires API key)."""
+
+    API_URL = "https://freeimage.host/api/1/upload"
+
+    supports_arbitrary_files = False
+    temporary = False
+
+    def __init__(self, api_key: str, **kwargs):
+        if not api_key:
+            raise ValueError("freeimage.host requires an API key.")
+        self.api_key = api_key
+
+    @property
+    def name(self) -> str:
+        return "freeimage"
+
+    def upload(self, image_path: str) -> str:
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        with open(image_path, 'rb') as f:
+            response = requests.post(
+                self.API_URL,
+                data={'key': self.api_key, 'action': 'upload', 'format': 'json'},
+                files={'source': f},
+                timeout=(10, 120),
+            )
+
+        if response.status_code != 200:
+            raise UploadError(f"freeimage upload failed: HTTP {response.status_code}: {response.text[:200].strip()}")
+
+        try:
+            payload = response.json()
+        except ValueError:
+            raise UploadError(f"freeimage upload failed: invalid JSON: {response.text[:200]}")
+
+        image = payload.get('data', {}).get('image', {})
+        if isinstance(image, dict):
+            url = image.get('url') or image.get('display_url')
+        else:
+            url = None
+        if not url:
+            raise UploadError(f"freeimage upload failed: {payload.get('status_txt') or 'no url in response'}")
+        return url
+
+
+class UploadcareHost(ImageHost):
+    """Uploadcare file hosting using the public-key upload API.
+
+    Returns a ucarecdn CDN URL for the uploaded file.
+    """
+
+    API_URL = "https://upload.uploadcare.com/base/"
+    CDN_BASE = "https://ucarecdn.com/"
+
+    supports_arbitrary_files = True
+    temporary = False
+
+    def __init__(
+        self,
+        public_key: str,
+        store: str = None,
+        signature: str = None,
+        expire: str = None,
+        cdn_base: str = None,
+        **kwargs
+    ):
+        if not public_key:
+            raise ValueError("uploadcare requires a public_key.")
+        self.public_key = public_key
+        self.store = store
+        self.signature = signature
+        self.expire = expire
+        self.cdn_base = (cdn_base or self.CDN_BASE).rstrip('/')
+
+    @property
+    def name(self) -> str:
+        return "uploadcare"
+
+    def upload(self, image_path: str) -> str:
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        data = {
+            'UPLOADCARE_PUB_KEY': self.public_key,
+            'UPLOADCARE_STORE': self.store or 'auto',
+        }
+        if self.signature:
+            data['UPLOADCARE_SIGNATURE'] = self.signature
+        if self.expire:
+            data['UPLOADCARE_EXPIRE'] = str(self.expire)
+
+        with open(image_path, 'rb') as f:
+            response = requests.post(
+                self.API_URL,
+                data=data,
+                files={'file': f},
+                timeout=(10, 120),
+            )
+
+        if response.status_code not in (200, 201):
+            raise UploadError(f"uploadcare upload failed: HTTP {response.status_code}: {response.text[:200].strip()}")
+
+        try:
+            payload = response.json()
+        except ValueError:
+            raise UploadError(f"uploadcare upload failed: invalid JSON: {response.text[:200]}")
+
+        file_uuid = payload.get('file') or (payload.get('files') or [None])[0]
+        if not file_uuid:
+            raise UploadError("uploadcare upload failed: no file uuid in response")
+        return f"{self.cdn_base}/{file_uuid}"
+
+
+class ImageKitHost(ImageHost):
+    """ImageKit server-side file upload (requires private key)."""
+
+    API_URL = "https://upload.imagekit.io/v1/files/upload"
+
+    supports_arbitrary_files = True
+    temporary = False
+
+    def __init__(self, private_key: str, **kwargs):
+        if not private_key:
+            raise ValueError("imagekit requires a private_key.")
+        self.private_key = private_key
+
+    @property
+    def name(self) -> str:
+        return "imagekit"
+
+    def upload(self, image_path: str) -> str:
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        token = base64.b64encode(f"{self.private_key}:".encode()).decode()
+        headers = {'Authorization': f'Basic {token}'}
+        data = {'fileName': os.path.basename(image_path)}
+
+        with open(image_path, 'rb') as f:
+            response = requests.post(
+                self.API_URL,
+                headers=headers,
+                data=data,
+                files={'file': f},
+                timeout=(10, 120),
+            )
+
+        if response.status_code not in (200, 201):
+            raise UploadError(f"imagekit upload failed: HTTP {response.status_code}: {response.text[:200].strip()}")
+
+        try:
+            payload = response.json()
+        except ValueError:
+            raise UploadError(f"imagekit upload failed: invalid JSON: {response.text[:200]}")
+
+        url = payload.get('url')
+        if not url:
+            raise UploadError("imagekit upload failed: no url in response")
+        return url
+
+
+class CloudinaryHost(ImageHost):
+    """Cloudinary upload using an unsigned preset or signed timestamp mode."""
+
+    def __init__(
+        self,
+        cloud_name: str,
+        upload_preset: str = None,
+        api_key: str = None,
+        api_secret: str = None,
+        resource_type: str = 'image',
+        **kwargs
+    ):
+        if not cloud_name:
+            raise ValueError("cloudinary requires a cloud_name.")
+        if not upload_preset and not (api_key and api_secret):
+            raise ValueError("cloudinary requires upload_preset or api_key+api_secret.")
+        self.cloud_name = cloud_name
+        self.upload_preset = upload_preset
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.resource_type = resource_type
+
+    @property
+    def API_URL(self) -> str:
+        return f"https://res.cloudinary.com/{self.cloud_name}/{self.resource_type}/upload/"
+
+    @property
+    def name(self) -> str:
+        return "cloudinary"
+
+    def _signed_params(self) -> dict:
+        params = {'timestamp': str(int(time.time()))}
+        if self.upload_preset:
+            params['upload_preset'] = self.upload_preset
+        to_sign = '&'.join(f"{k}={params[k]}" for k in sorted(params))
+        params['api_key'] = self.api_key
+        params['signature'] = hashlib.sha1((to_sign + self.api_secret).encode()).hexdigest()
+        return params
+
+    def upload(self, image_path: str) -> str:
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        if self.upload_preset and not self.api_secret:
+            data = {'upload_preset': self.upload_preset}
+        else:
+            data = self._signed_params()
+
+        with open(image_path, 'rb') as f:
+            response = requests.post(
+                self.API_URL,
+                data=data,
+                files={'file': f},
+                timeout=(10, 120),
+            )
+
+        if response.status_code not in (200, 201):
+            raise UploadError(f"cloudinary upload failed: HTTP {response.status_code}: {response.text[:200].strip()}")
+
+        try:
+            payload = response.json()
+        except ValueError:
+            raise UploadError(f"cloudinary upload failed: invalid JSON: {response.text[:200]}")
+
+        url = payload.get('secure_url') or payload.get('url')
+        if not url:
+            raise UploadError("cloudinary upload failed: no url in response")
+        return url
+
+
+class ZeroXZeroHost(ImageHost):
+    """0x0.st anonymous temporary file hosting (nameless.sh successor)."""
+
+    API_URL = "https://0x0.st/"
+
+    supports_arbitrary_files = True
+    temporary = True
+
+    @property
+    def name(self) -> str:
+        return "0x0"
+
+    def upload(self, image_path: str) -> str:
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        with open(image_path, 'rb') as f:
+            response = requests.post(self.API_URL, files={'file': f}, timeout=(10, 120))
+
+        if response.status_code != 200:
+            raise UploadError(f"0x0 upload failed: HTTP {response.status_code}: {response.text[:200].strip()}")
+
+        url = response.text.strip()
+        if not url.startswith(('http://', 'https://')):
+            raise UploadError(f"0x0 upload failed: invalid response: {url[:200]}")
+        return url
+
+
+class LitterboxHost(ImageHost):
+    """litterbox.catbox.moe temporary file hosting."""
+
+    API_URL = "https://litterbox.catbox.moe/resources/internals/api.php"
+    URL_PREFIX = "https://files.litterbox.catbox.moe/"
+    ALLOWED_TIMES = ('1h', '12h', '24h', '72h')
+
+    supports_arbitrary_files = True
+    temporary = True
+
+    def __init__(self, expiration: str = '24h', **kwargs):
+        if expiration not in self.ALLOWED_TIMES:
+            raise ValueError(f"litterbox expiration must be one of: {', '.join(self.ALLOWED_TIMES)}")
+        self.expiration = expiration
+
+    @property
+    def name(self) -> str:
+        return "litterbox"
+
+    def upload(self, image_path: str) -> str:
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        with open(image_path, 'rb') as f:
+            response = requests.post(
+                self.API_URL,
+                data={'reqtype': 'fileupload', 'time': self.expiration},
+                files={'fileToUpload': f},
+                timeout=(10, 120),
+            )
+
+        if response.status_code != 200:
+            raise UploadError(f"litterbox upload failed: HTTP {response.status_code}: {response.text[:200].strip()}")
+
+        url = response.text.strip()
+        if not url.startswith(self.URL_PREFIX) or len(url) <= len(self.URL_PREFIX):
+            raise UploadError(f"litterbox upload failed: invalid response: {url[:200]}")
         return url
 
 
@@ -526,10 +831,23 @@ IMAGE_HOSTS = {
     'imgur': ImgurHost,
     'smms': SmmsHost,
     'catbox': CatboxHost,
+    'freeimage': FreeImageHost,
+    'uploadcare': UploadcareHost,
+    'imagekit': ImageKitHost,
+    'cloudinary': CloudinaryHost,
+    '0x0': ZeroXZeroHost,
+    'litterbox': LitterboxHost,
     's3': S3Host,
     'r2': R2Host,
     'rclone': RcloneHost,
     'custom': CustomHost,
+}
+
+
+# Non-canonical aliases that resolve to a canonical registry name.
+HOST_ALIASES = {
+    'freeimagehost': 'freeimage',
+    'zeroxzero': '0x0',
 }
 
 
@@ -540,7 +858,7 @@ def create_image_host(host_name: str = None, **kwargs) -> ImageHost:
     If no host_name is provided, loads from config file or environment.
     
     Args:
-        host_name: Name of the host ('imgbb', 'imgur', 'smms', 'catbox', 's3', 'r2', 'rclone', 'custom')
+        host_name: Name of the host ('imgbb', 'imgur', 'smms', 'catbox', 'freeimage', 'uploadcare', 'imagekit', 'cloudinary', '0x0', 'litterbox', 's3', 'r2', 'rclone', 'custom')
                    If None, loads from ~/.telepress.json or TELEPRESS_* env vars
         **kwargs: Host-specific configuration (api_key, client_id, etc.)
     
@@ -567,6 +885,7 @@ def create_image_host(host_name: str = None, **kwargs) -> ImageHost:
         if not host_name:
             raise ValueError("Config missing 'type' field for image_host")
         kwargs = {**config, **kwargs}  # kwargs override config
+    host_name = HOST_ALIASES.get(host_name, host_name)
     if host_name not in IMAGE_HOSTS:
         available = ', '.join(IMAGE_HOSTS.keys())
         raise ValueError(f"Unknown image host: {host_name}. Available: {available}")

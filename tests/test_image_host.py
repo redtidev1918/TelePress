@@ -8,8 +8,9 @@ import json
 from unittest.mock import patch, MagicMock, Mock
 
 from telepress.image_host import (
-    ImageHost, ImgbbHost, ImgurHost, SmmsHost, CatboxHost, R2Host, S3Host, CustomHost,
-    create_image_host, IMAGE_HOSTS
+    ImageHost, ImgbbHost, ImgurHost, SmmsHost, CatboxHost, FreeImageHost, UploadcareHost,
+    ImageKitHost, CloudinaryHost, ZeroXZeroHost, LitterboxHost, R2Host, S3Host, CustomHost,
+    create_image_host, IMAGE_HOSTS, HOST_ALIASES
 )
 from telepress.exceptions import UploadError
 
@@ -551,6 +552,214 @@ class TestCatboxHost(unittest.TestCase):
             host.upload('/nonexistent/path.dat')
 
 
+class TestFreeImageHost(unittest.TestCase):
+    """Tests for FreeImageHost."""
+
+    def test_requires_api_key(self):
+        with self.assertRaises(ValueError):
+            FreeImageHost(api_key='')
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_success(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {'status_txt': 'OK', 'data': {'image': {'url': 'https://freeimage.host/x.png'}}}
+        mock_post.return_value = mock_response
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            f.write(b'data')
+            tmp = f.name
+        try:
+            host = FreeImageHost(api_key='k')
+            self.assertEqual(host.upload(tmp), 'https://freeimage.host/x.png')
+            self.assertEqual(mock_post.call_args[1]['data']['format'], 'json')
+            self.assertIn('source', mock_post.call_args[1]['files'])
+        finally:
+            os.unlink(tmp)
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_failure(self, mock_post):
+        mock_response = MagicMock(); mock_response.status_code = 500; mock_response.text = 'bad'
+        mock_post.return_value = mock_response
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            tmp = f.name
+        try:
+            with self.assertRaises(UploadError):
+                FreeImageHost(api_key='k').upload(tmp)
+        finally:
+            os.unlink(tmp)
+
+    def test_file_not_found(self):
+        with self.assertRaises(FileNotFoundError):
+            FreeImageHost(api_key='k').upload('/no/such.png')
+
+
+class TestUploadcareHost(unittest.TestCase):
+    """Tests for UploadcareHost."""
+
+    def test_requires_public_key(self):
+        with self.assertRaises(ValueError):
+            UploadcareHost(public_key='')
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_returns_cdn_url(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {'file': 'abc-123'}
+        mock_post.return_value = mock_response
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+            f.write(b'x')
+            tmp = f.name
+        try:
+            host = UploadcareHost(public_key='pub')
+            self.assertEqual(host.upload(tmp), 'https://ucarecdn.com/abc-123')
+            data = mock_post.call_args[1]['data']
+            self.assertEqual(data['UPLOADCARE_PUB_KEY'], 'pub')
+            self.assertIn('file', mock_post.call_args[1]['files'])
+        finally:
+            os.unlink(tmp)
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_missing_uuid(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {}
+        mock_post.return_value = mock_response
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+            tmp = f.name
+        try:
+            with self.assertRaises(UploadError):
+                UploadcareHost(public_key='pub').upload(tmp)
+        finally:
+            os.unlink(tmp)
+
+
+class TestImageKitHost(unittest.TestCase):
+    """Tests for ImageKitHost."""
+
+    def test_requires_private_key(self):
+        with self.assertRaises(ValueError):
+            ImageKitHost(private_key='')
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_success(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {'url': 'https://ik.imagekit.io/x/file.png'}
+        mock_post.return_value = mock_response
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            f.write(b'x')
+            tmp = f.name
+        try:
+            host = ImageKitHost(private_key='pk')
+            self.assertEqual(host.upload(tmp), 'https://ik.imagekit.io/x/file.png')
+            kwargs = mock_post.call_args[1]
+            self.assertTrue(kwargs['headers']['Authorization'].startswith('Basic '))
+            self.assertNotIn('pk', str(kwargs))
+            self.assertIn('file', kwargs['files'])
+        finally:
+            os.unlink(tmp)
+
+
+class TestCloudinaryHost(unittest.TestCase):
+    """Tests for CloudinaryHost."""
+
+    def test_requires_preset_or_keys(self):
+        with self.assertRaises(ValueError):
+            CloudinaryHost(cloud_name='cloud')
+
+    @patch('telepress.image_host.requests.post')
+    def test_unsigned_upload_preset(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {'secure_url': 'https://res.cloudinary.com/c/image/upload/v1/x.png'}
+        mock_post.return_value = mock_response
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            f.write(b'x')
+            tmp = f.name
+        try:
+            host = CloudinaryHost(cloud_name='c', upload_preset='p')
+            self.assertEqual(host.upload(tmp), 'https://res.cloudinary.com/c/image/upload/v1/x.png')
+            self.assertEqual(mock_post.call_args[1]['data']['upload_preset'], 'p')
+        finally:
+            os.unlink(tmp)
+
+    @patch('telepress.image_host.requests.post')
+    def test_signed_upload(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {'secure_url': 'https://res.cloudinary.com/c/image/upload/v1/s.png'}
+        mock_post.return_value = mock_response
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            f.write(b'x')
+            tmp = f.name
+        try:
+            host = CloudinaryHost(cloud_name='c', api_key='key', api_secret='secret')
+            url = host.upload(tmp)
+            self.assertTrue(url.startswith('https://'))
+            data = mock_post.call_args[1]['data']
+            self.assertIn('signature', data)
+            self.assertNotIn('secret', str(data))
+        finally:
+            os.unlink(tmp)
+
+
+class TestZeroXZeroHost(unittest.TestCase):
+    """Tests for ZeroXZeroHost (0x0.st)."""
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = 'https://0x0.st/abc.txt'
+        mock_post.return_value = mock_response
+        with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as f:
+            f.write(b'x')
+            tmp = f.name
+        try:
+            self.assertEqual(ZeroXZeroHost().upload(tmp), 'https://0x0.st/abc.txt')
+        finally:
+            os.unlink(tmp)
+
+    @patch('telepress.image_host.requests.post')
+    def test_invalid_response(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = 'error'
+        mock_post.return_value = mock_response
+        with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as f:
+            tmp = f.name
+        try:
+            with self.assertRaises(UploadError):
+                ZeroXZeroHost().upload(tmp)
+        finally:
+            os.unlink(tmp)
+
+
+class TestLitterboxHost(unittest.TestCase):
+    """Tests for LitterboxHost."""
+
+    def test_invalid_expiration(self):
+        with self.assertRaises(ValueError):
+            LitterboxHost(expiration='99h')
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = 'https://files.litterbox.catbox.moe/abc.png'
+        mock_post.return_value = mock_response
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            f.write(b'x')
+            tmp = f.name
+        try:
+            host = LitterboxHost(expiration='24h')
+            self.assertEqual(host.upload(tmp), 'https://files.litterbox.catbox.moe/abc.png')
+            self.assertEqual(mock_post.call_args[1]['data']['time'], '24h')
+        finally:
+            os.unlink(tmp)
+
+
+
 class TestCreateImageHost(unittest.TestCase):
     """Tests for create_image_host function."""
     
@@ -580,7 +789,21 @@ class TestCreateImageHost(unittest.TestCase):
         host = create_image_host('catbox', userhash='my-hash')
         self.assertIsInstance(host, CatboxHost)
         self.assertEqual(host.userhash, 'my-hash')
-    
+
+    def test_create_new_hosts(self):
+        self.assertIsInstance(create_image_host('freeimage', api_key='k'), FreeImageHost)
+        self.assertIsInstance(create_image_host('uploadcare', public_key='p'), UploadcareHost)
+        self.assertIsInstance(create_image_host('imagekit', private_key='k'), ImageKitHost)
+        self.assertIsInstance(create_image_host('cloudinary', cloud_name='c', upload_preset='p'), CloudinaryHost)
+        self.assertIsInstance(create_image_host('0x0'), ZeroXZeroHost)
+        self.assertIsInstance(create_image_host('litterbox', expiration='1h'), LitterboxHost)
+
+    def test_host_aliases(self):
+        self.assertEqual(HOST_ALIASES['freeimagehost'], 'freeimage')
+        self.assertEqual(HOST_ALIASES['zeroxzero'], '0x0')
+        self.assertIsInstance(create_image_host('freeimagehost', api_key='k'), FreeImageHost)
+        self.assertIsInstance(create_image_host('zeroxzero'), ZeroXZeroHost)
+
     def test_create_s3(self):
         """Test creating s3 host."""
         host = create_image_host('s3',
@@ -655,7 +878,7 @@ class TestImageHostsRegistry(unittest.TestCase):
     
     def test_all_hosts_registered(self):
         """Test that all expected hosts are registered."""
-        expected = {'imgbb', 'imgur', 'smms', 'catbox', 'r2', 's3', 'custom', 'rclone'}
+        expected = {'imgbb', 'imgur', 'smms', 'catbox', 'freeimage', 'uploadcare', 'imagekit', 'cloudinary', '0x0', 'litterbox', 'r2', 's3', 'custom', 'rclone'}
         self.assertEqual(set(IMAGE_HOSTS.keys()), expected)
     
     def test_all_hosts_are_image_host_subclass(self):
