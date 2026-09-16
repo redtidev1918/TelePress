@@ -138,6 +138,38 @@ def configure_wizard():
             userhash = input("Userhash (leave empty for anonymous upload): ").strip()
             if userhash:
                 config['userhash'] = userhash
+
+        elif host_type == 'freeimage':
+            print("\nRequires API Key from https://freeimage.host")
+            config['api_key'] = input("API Key: ").strip()
+
+        elif host_type == 'uploadcare':
+            print("\nRequires Public Key from https://app.uploadcare.com")
+            config['public_key'] = input("Public Key: ").strip()
+            store = input("Store (default: auto, or 0/1): ").strip()
+            if store:
+                config['store'] = store
+
+        elif host_type == 'imagekit':
+            print("\nRequires Private Key from https://imagekit.io")
+            config['private_key'] = input("Private Key: ").strip()
+
+        elif host_type == 'cloudinary':
+            print("\nRequires Cloud Name and either an upload preset or API key+secret from https://cloudinary.com")
+            config['cloud_name'] = input("Cloud Name: ").strip()
+            preset = input("Upload Preset (optional, recommended): ").strip()
+            if preset:
+                config['upload_preset'] = preset
+            else:
+                config['api_key'] = input("API Key: ").strip()
+                config['api_secret'] = input("API Secret: ").strip()
+
+        elif host_type == '0x0':
+            print("\n0x0.st requires no credentials. Files are temporary.")
+
+        elif host_type == 'litterbox':
+            exp = input("Expiration (default: 24h; options 1h,12h,24h,72h): ").strip()
+            config['expiration'] = exp or '24h'
             
         elif host_type in ('r2', 's3'):
             print(f"\nConfiguring {host_type.upper()} compatible storage:")

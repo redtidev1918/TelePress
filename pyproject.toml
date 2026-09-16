@@ -17,10 +17,12 @@ keywords = [
   "markdown",
   "publishing",
   "image-hosting",
+  "file-hosting",
   "imgbb",
   "imgur",
   "r2",
   "catbox",
+  "uploadcare",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",

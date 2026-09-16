@@ -116,10 +116,11 @@ curl -X POST http://127.0.0.1:8000/publish/gallery \
 
 支持的图床：
 
-- ImgBB
-- Imgur
-- sm.ms
-- Catbox（匿名或 userhash）
+- ImgBB、Imgur、sm.ms、Freeimage.host（图片）
+- ImageKit、Cloudinary（图片 / CDN）
+- Catbox（匿名或 userhash，任意文件）
+- Uploadcare（public key，任意文件，CDN）
+- 0x0.st、Litterbox（匿名临时文件，明确过期时间）
 - AWS S3、Cloudflare R2、OSS、MinIO 等 S3 兼容存储
 - Rclone remote
 - 自定义 HTTP 上传 API
@@ -177,8 +178,50 @@ export TELEPRESS_IMAGE_HOST_USERHASH=YOUR_USERHASH
 
 Catbox 本身不会替用户重新压缩文件。通过 `ImageUploader` 上传图片时，
 TelePress 仍会按 `max_size` 先压缩；直接调用 `CatboxHost.upload(path)`
-则原样上传文件（支持 ZIP、TXT 等普通文件）。匿名上传的文件存放在 Catbox
 上，未绑定账号、无法在 Catbox 网页端管理或删除，请勿用来长期保存重要数据。
+
+FreeImage.host：
+
+```bash
+export TELEPRESS_IMAGE_HOST_TYPE=freeimage
+export TELEPRESS_IMAGE_HOST_API_KEY=YOUR_KEY
+```
+
+Uploadcare：
+
+```bash
+export TELEPRESS_IMAGE_HOST_TYPE=uploadcare
+export TELEPRESS_IMAGE_HOST_PUBLIC_KEY=YOUR_PUBLIC_KEY
+```
+
+ImageKit：
+
+```bash
+export TELEPRESS_IMAGE_HOST_TYPE=imagekit
+export TELEPRESS_IMAGE_HOST_PRIVATE_KEY=YOUR_PRIVATE_KEY
+```
+
+Cloudinary（unsigned preset）：
+
+```bash
+export TELEPRESS_IMAGE_HOST_TYPE=cloudinary
+export TELEPRESS_IMAGE_HOST_CLOUD_NAME=your-cloud
+export TELEPRESS_IMAGE_HOST_UPLOAD_PRESET=your-preset
+```
+
+临时文件（0x0.st / Litterbox）：
+
+```bash
+export TELEPRESS_IMAGE_HOST_TYPE=0x0
+# Litterbox 指定过期时间：1h / 12h / 24h / 72h
+export TELEPRESS_IMAGE_HOST_TYPE=litterbox
+export TELEPRESS_IMAGE_HOST_EXPIRATION=24h
+```
+
+0x0.st 与 Litterbox 均为匿名临时文件托管，文件到期会被删除，不适合作为
+长期文章的图片来源。各 Provider 的自定义字符串（userhash、API key、
+public/private key、secret 等）都会按 `TELEPRESS_IMAGE_HOST_*` 通用映射
+写入 `image_host` 配置。
 
 环境变量的优先级高于配置文件：
 

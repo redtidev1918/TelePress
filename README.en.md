@@ -121,10 +121,11 @@ event loop, so concurrent requests do not serialize on those operations.
 
 Supported hosts:
 
-- ImgBB
-- Imgur
-- sm.ms
-- Catbox (anonymous or userhash)
+- ImgBB, Imgur, sm.ms, Freeimage.host (images)
+- ImageKit, Cloudinary (images/CDN)
+- Catbox (anonymous or userhash, arbitrary files)
+- Uploadcare (public key, arbitrary files, CDN)
+- 0x0.st, Litterbox (anonymous temporary files with explicit expiry)
 - S3-compatible storage, including AWS S3, Cloudflare R2, OSS, and MinIO
 - Rclone remotes
 - Custom HTTP upload APIs
@@ -187,6 +188,36 @@ Catbox does not recompress files itself. When uploading images through
 other plain files are accepted). Anonymous uploads are not tied to an account
 and cannot be managed or deleted from Catbox's web interface, so do not use
 them for long-term storage of important files.
+
+Other providers (all use the generic `TELEPRESS_IMAGE_HOST_*` mapping):
+
+```bash
+# Freeimage.host
+export TELEPRESS_IMAGE_HOST_TYPE=freeimage
+export TELEPRESS_IMAGE_HOST_API_KEY=YOUR_KEY
+
+# Uploadcare
+export TELEPRESS_IMAGE_HOST_TYPE=uploadcare
+export TELEPRESS_IMAGE_HOST_PUBLIC_KEY=YOUR_PUBLIC_KEY
+
+# ImageKit
+export TELEPRESS_IMAGE_HOST_TYPE=imagekit
+export TELEPRESS_IMAGE_HOST_PRIVATE_KEY=YOUR_PRIVATE_KEY
+
+# Cloudinary (unsigned preset)
+export TELEPRESS_IMAGE_HOST_TYPE=cloudinary
+export TELEPRESS_IMAGE_HOST_CLOUD_NAME=your-cloud
+export TELEPRESS_IMAGE_HOST_UPLOAD_PRESET=your-preset
+
+# Temporary anonymous file hosting
+export TELEPRESS_IMAGE_HOST_TYPE=0x0
+export TELEPRESS_IMAGE_HOST_TYPE=litterbox
+export TELEPRESS_IMAGE_HOST_EXPIRATION=24h
+```
+
+0x0.st and Litterbox are anonymous temporary file hosts: files expire
+automatically and are not suitable as permanent article images. Verify each
+provider's current size, retention and hotlink policies before relying on it.
 
 Environment variables override file configuration:
 
