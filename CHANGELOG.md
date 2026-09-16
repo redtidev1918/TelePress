@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.7.0](https://github.com/redtidev1918/telepress/compare/v0.6.2...v0.7.0) (2026-09-16)
+
+
+### Features
+
+* add native Catbox upload support ([#24](https://github.com/redtidev1918/telepress/issues/24)) ([ca1b00c](https://github.com/redtidev1918/telepress/commit/ca1b00c6bca9ee2454a3893116be2671b98b5a15))
+
 ## [0.6.2](https://github.com/redtidev1918/telepress/compare/v0.6.1...v0.6.2) (2026-09-12)
 
 
