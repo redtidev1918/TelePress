@@ -8,7 +8,7 @@ import json
 from unittest.mock import patch, MagicMock, Mock
 
 from telepress.image_host import (
-    ImageHost, ImgbbHost, ImgurHost, SmmsHost, R2Host, S3Host, CustomHost,
+    ImageHost, ImgbbHost, ImgurHost, SmmsHost, CatboxHost, R2Host, S3Host, CustomHost,
     create_image_host, IMAGE_HOSTS
 )
 from telepress.exceptions import UploadError
@@ -407,6 +407,150 @@ class TestCustomHost(unittest.TestCase):
             os.unlink(tmp_path)
 
 
+class TestCatboxHost(unittest.TestCase):
+    """Tests for CatboxHost."""
+
+    def test_init_anonymous(self):
+        """Test anonymous initialization."""
+        host = CatboxHost()
+        self.assertEqual(host.name, 'catbox')
+        self.assertIsNone(host.userhash)
+
+    def test_init_with_userhash(self):
+        """Test initialization with userhash."""
+        host = CatboxHost(userhash='my-hash')
+        self.assertEqual(host.userhash, 'my-hash')
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_success_anonymous(self, mock_post):
+        """Test anonymous upload success."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = 'https://files.catbox.moe/abcdef.png'
+        mock_post.return_value = mock_response
+
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            f.write(b'fake file data')
+            tmp_path = f.name
+
+        try:
+            host = CatboxHost()
+            url = host.upload(tmp_path)
+            self.assertEqual(url, 'https://files.catbox.moe/abcdef.png')
+            call_kwargs = mock_post.call_args[1]
+            self.assertEqual(call_kwargs['data']['reqtype'], 'fileupload')
+            self.assertNotIn('userhash', call_kwargs['data'])
+            self.assertIn('fileToUpload', call_kwargs['files'])
+        finally:
+            os.unlink(tmp_path)
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_success_with_userhash(self, mock_post):
+        """Test upload includes userhash when configured."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = 'https://files.catbox.moe/abc123.txt'
+        mock_post.return_value = mock_response
+
+        with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as f:
+            f.write(b'plain text')
+            tmp_path = f.name
+
+        try:
+            host = CatboxHost(userhash='test-userhash')
+            url = host.upload(tmp_path)
+            self.assertEqual(url, 'https://files.catbox.moe/abc123.txt')
+            call_kwargs = mock_post.call_args[1]
+            self.assertEqual(call_kwargs['data']['reqtype'], 'fileupload')
+            self.assertEqual(call_kwargs['data']['userhash'], 'test-userhash')
+            self.assertIn('fileToUpload', call_kwargs['files'])
+        finally:
+            os.unlink(tmp_path)
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_non_200_raises(self, mock_post):
+        """Test non-200 response raises UploadError without leaking userhash."""
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = 'File too large.'
+        mock_post.return_value = mock_response
+
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            f.write(b'fake data')
+            tmp_path = f.name
+
+        try:
+            host = CatboxHost(userhash='secret-hash')
+            with self.assertRaises(UploadError) as ctx:
+                host.upload(tmp_path)
+            self.assertNotIn('secret-hash', str(ctx.exception))
+        finally:
+            os.unlink(tmp_path)
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_invalid_response_raises(self, mock_post):
+        """Test 200 with non-URL response raises UploadError."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = 'File too large.'
+        mock_post.return_value = mock_response
+
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            f.write(b'fake data')
+            tmp_path = f.name
+
+        try:
+            host = CatboxHost()
+            with self.assertRaises(UploadError):
+                host.upload(tmp_path)
+        finally:
+            os.unlink(tmp_path)
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_empty_response_raises(self, mock_post):
+        """Test empty 200 response raises UploadError."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = ''
+        mock_post.return_value = mock_response
+
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            f.write(b'fake data')
+            tmp_path = f.name
+
+        try:
+            host = CatboxHost()
+            with self.assertRaises(UploadError):
+                host.upload(tmp_path)
+        finally:
+            os.unlink(tmp_path)
+
+    @patch('telepress.image_host.requests.post')
+    def test_upload_accepts_plain_files(self, mock_post):
+        """Test upload does not reject non-image files."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = 'https://files.catbox.moe/archive.zip'
+        mock_post.return_value = mock_response
+
+        with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as f:
+            f.write(b'zip contents')
+            tmp_path = f.name
+
+        try:
+            host = CatboxHost()
+            url = host.upload(tmp_path)
+            self.assertEqual(url, 'https://files.catbox.moe/archive.zip')
+        finally:
+            os.unlink(tmp_path)
+
+    def test_upload_file_not_found(self):
+        """Test upload with non-existent file."""
+        host = CatboxHost()
+        with self.assertRaises(FileNotFoundError):
+            host.upload('/nonexistent/path.dat')
+
+
 class TestCreateImageHost(unittest.TestCase):
     """Tests for create_image_host function."""
     
@@ -424,6 +568,18 @@ class TestCreateImageHost(unittest.TestCase):
         """Test creating smms host."""
         host = create_image_host('smms', api_token='test_token')
         self.assertIsInstance(host, SmmsHost)
+
+    def test_create_catbox_anonymous(self):
+        """Test creating anonymous catbox host."""
+        host = create_image_host('catbox')
+        self.assertIsInstance(host, CatboxHost)
+        self.assertIsNone(host.userhash)
+
+    def test_create_catbox_with_userhash(self):
+        """Test creating catbox host with userhash."""
+        host = create_image_host('catbox', userhash='my-hash')
+        self.assertIsInstance(host, CatboxHost)
+        self.assertEqual(host.userhash, 'my-hash')
     
     def test_create_s3(self):
         """Test creating s3 host."""
@@ -499,7 +655,7 @@ class TestImageHostsRegistry(unittest.TestCase):
     
     def test_all_hosts_registered(self):
         """Test that all expected hosts are registered."""
-        expected = {'imgbb', 'imgur', 'smms', 'r2', 's3', 'custom', 'rclone'}
+        expected = {'imgbb', 'imgur', 'smms', 'catbox', 'r2', 's3', 'custom', 'rclone'}
         self.assertEqual(set(IMAGE_HOSTS.keys()), expected)
     
     def test_all_hosts_are_image_host_subclass(self):

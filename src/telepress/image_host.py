@@ -173,6 +173,55 @@ class SmmsHost(ImageHost):
         return data['data']['url']
 
 
+class CatboxHost(ImageHost):
+    """catbox.moe image/file hosting.
+
+    Supports anonymous uploads when ``userhash`` is not configured. Catbox
+    accepts plain files (ZIP, TXT, ...), not just images.
+    """
+
+    API_URL = "https://catbox.moe/user/api.php"
+    URL_PREFIX = "https://files.catbox.moe/"
+
+    def __init__(self, userhash: Optional[str] = None, **kwargs):
+        self.userhash = userhash
+
+    @property
+    def name(self) -> str:
+        return "catbox"
+
+    def upload(self, image_path: str) -> str:
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        data = {"reqtype": "fileupload"}
+        if self.userhash:
+            data["userhash"] = self.userhash
+
+        with open(image_path, "rb") as f:
+            response = requests.post(
+                self.API_URL,
+                data=data,
+                files={"fileToUpload": f},
+                timeout=(10, 120),
+            )
+
+        if response.status_code != 200:
+            raise UploadError(
+                f"catbox upload failed: HTTP {response.status_code}: "
+                f"{response.text[:200].strip()}"
+            )
+
+        url = response.text.strip()
+        if not url.startswith(self.URL_PREFIX) or len(url) <= len(self.URL_PREFIX):
+            raise UploadError(
+                f"catbox upload failed: invalid response: {url[:200]}"
+            )
+        return url
+
+
+
+
 class S3Host(ImageHost):
     """
     S3-compatible storage (AWS S3, Cloudflare R2, Aliyun OSS, MinIO, etc).
@@ -476,6 +525,7 @@ IMAGE_HOSTS = {
     'imgbb': ImgbbHost,
     'imgur': ImgurHost,
     'smms': SmmsHost,
+    'catbox': CatboxHost,
     's3': S3Host,
     'r2': R2Host,
     'rclone': RcloneHost,
@@ -490,7 +540,7 @@ def create_image_host(host_name: str = None, **kwargs) -> ImageHost:
     If no host_name is provided, loads from config file or environment.
     
     Args:
-        host_name: Name of the host ('imgbb', 'imgur', 'smms', 's3', 'r2', 'custom')
+        host_name: Name of the host ('imgbb', 'imgur', 'smms', 'catbox', 's3', 'r2', 'rclone', 'custom')
                    If None, loads from ~/.telepress.json or TELEPRESS_* env vars
         **kwargs: Host-specific configuration (api_key, client_id, etc.)
     
