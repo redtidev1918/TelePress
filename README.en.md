@@ -124,6 +124,7 @@ Supported hosts:
 - ImgBB
 - Imgur
 - sm.ms
+- Catbox (anonymous or userhash)
 - S3-compatible storage, including AWS S3, Cloudflare R2, OSS, and MinIO
 - Rclone remotes
 - Custom HTTP upload APIs
@@ -159,6 +160,33 @@ S3-compatible configuration:
   }
 }
 ```
+
+Catbox configuration (anonymous upload works without `userhash`):
+
+```bash
+# Anonymous upload
+export TELEPRESS_IMAGE_HOST_TYPE=catbox
+
+# Use your account userhash (to manage/anonymize files)
+export TELEPRESS_IMAGE_HOST_TYPE=catbox
+export TELEPRESS_IMAGE_HOST_USERHASH=YOUR_USERHASH
+```
+
+```json
+{
+  "image_host": {
+    "type": "catbox",
+    "userhash": "YOUR_USERHASH"
+  }
+}
+```
+
+Catbox does not recompress files itself. When uploading images through
+`ImageUploader`, TelePress still compresses over `max_size` first; calling
+`CatboxHost.upload(path)` directly uploads the file as-is (ZIP, TXT and
+other plain files are accepted). Anonymous uploads are not tied to an account
+and cannot be managed or deleted from Catbox's web interface, so do not use
+them for long-term storage of important files.
 
 Environment variables override file configuration:
 

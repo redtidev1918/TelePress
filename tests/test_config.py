@@ -91,6 +91,17 @@ class TestLoadFromEnv(unittest.TestCase):
             self.assertEqual(config['image_host']['type'], 'imgbb')
             self.assertEqual(config['image_host']['api_key'], 'my_key')
     
+    def test_load_catbox_env_vars(self):
+        """Test loading catbox environment variables."""
+        env_vars = {
+            'TELEPRESS_IMAGE_HOST_TYPE': 'catbox',
+            'TELEPRESS_IMAGE_HOST_USERHASH': 'myhash'
+        }
+        with patch.dict(os.environ, env_vars, clear=False):
+            config = _load_from_env()
+            self.assertEqual(config['image_host']['type'], 'catbox')
+            self.assertEqual(config['image_host']['userhash'], 'myhash')
+
     def test_ignores_non_telepress_vars(self):
         """Test that non-TELEPRESS_ vars are ignored."""
         with patch.dict(os.environ, {'OTHER_VAR': 'value'}, clear=False):

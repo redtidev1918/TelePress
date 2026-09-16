@@ -132,6 +132,13 @@ def configure_wizard():
             print("\nRequires API Token from https://sm.ms/home/apitoken")
             config['api_token'] = input("API Token: ").strip()
             
+        elif host_type == 'catbox':
+            print("\nCatbox can be used anonymously (recommended for temporary files).")
+            print("Userhash (optional, used to manage/anonymize files on your account): ")
+            userhash = input("Userhash (leave empty for anonymous upload): ").strip()
+            if userhash:
+                config['userhash'] = userhash
+            
         elif host_type in ('r2', 's3'):
             print(f"\nConfiguring {host_type.upper()} compatible storage:")
             config['access_key_id'] = input("Access Key ID: ").strip()

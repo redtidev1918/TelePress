@@ -1,8 +1,7 @@
 """
 Image Uploader Module
 
-Uses external image hosting services (imgbb, imgur, sm.ms) since
-Telegraph's /upload API is currently unavailable.
+Uses external image/file hosting services since Telegraph's /upload API is currently unavailable.
 """
 import os
 import time
@@ -51,8 +50,7 @@ class ImageUploader:
     """
     Thread-safe image uploader with compression, retry and batch support.
     
-    Uses external image hosting services (imgbb, imgur, sm.ms) since
-    Telegraph's upload API is currently unavailable.
+    Uses external image/file hosting services since Telegraph's upload API is currently unavailable.
     
     Example:
         >>> uploader = ImageUploader('imgbb', api_key='your_key')
@@ -74,7 +72,7 @@ class ImageUploader:
         Initialize uploader with an image host.
         
         Args:
-            host: Image host name ('imgbb', 'imgur', 'smms', 'r2', 'custom'),
+            host: Image host name ('imgbb', 'imgur', 'smms', 'catbox', 'r2', 'rclone', 'custom'),
                   ImageHost instance, or None to load from config
             max_workers: Maximum concurrent uploads for batch operations (default: 4)
             **host_config: Host-specific config (api_key, client_id, etc.)

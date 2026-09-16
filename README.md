@@ -119,6 +119,7 @@ curl -X POST http://127.0.0.1:8000/publish/gallery \
 - ImgBB
 - Imgur
 - sm.ms
+- Catbox（匿名或 userhash）
 - AWS S3、Cloudflare R2、OSS、MinIO 等 S3 兼容存储
 - Rclone remote
 - 自定义 HTTP 上传 API
@@ -153,6 +154,31 @@ S3 兼容配置：
   }
 }
 ```
+
+Catbox 配置（支持匿名上传，不设置 `userhash` 即可）：
+
+```bash
+# 匿名上传
+export TELEPRESS_IMAGE_HOST_TYPE=catbox
+
+# 使用账号 userhash（可管理/匿名化文件）
+export TELEPRESS_IMAGE_HOST_TYPE=catbox
+export TELEPRESS_IMAGE_HOST_USERHASH=YOUR_USERHASH
+```
+
+```json
+{
+  "image_host": {
+    "type": "catbox",
+    "userhash": "YOUR_USERHASH"
+  }
+}
+```
+
+Catbox 本身不会替用户重新压缩文件。通过 `ImageUploader` 上传图片时，
+TelePress 仍会按 `max_size` 先压缩；直接调用 `CatboxHost.upload(path)`
+则原样上传文件（支持 ZIP、TXT 等普通文件）。匿名上传的文件存放在 Catbox
+上，未绑定账号、无法在 Catbox 网页端管理或删除，请勿用来长期保存重要数据。
 
 环境变量的优先级高于配置文件：
 
