@@ -76,6 +76,8 @@ jobs:
                   assert name in sums, name
                   assert hashlib.sha256(open(path, 'rb').read()).hexdigest() == sums[name], name
           PY
+      - name: Stage packages for upload
+        run: rm -f dist/SHA256SUMS dist/RELEASE-METADATA.json
       - name: Probe PyPI status
         id: probe
         run: |
@@ -148,6 +150,8 @@ jobs:
                   assert name in sums, name
                   assert hashlib.sha256(open(path, 'rb').read()).hexdigest() == sums[name], name
           PY
+      - name: Stage packages for upload
+        run: rm -f dist/SHA256SUMS dist/RELEASE-METADATA.json
       - name: Probe PyPI status
         id: probe
         run: |
