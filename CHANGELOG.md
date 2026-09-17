@@ -4,6 +4,14 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.10.0](https://github.com/redtidev1918/telepress/compare/v0.9.0...v0.10.0) (2026-09-17)
+
+
+### Features
+
+* **publish:** rich-novel HTTP endpoint with asset mapping ([e9fea03](https://github.com/redtidev1918/telepress/commit/e9fea03b3a2884fdcd855f06e36202a16ac6bc52))
+* **publish:** rich-novel HTTP endpoint with asset mapping ([83b5ca2](https://github.com/redtidev1918/telepress/commit/83b5ca2f7a0648b131092fbeebcfc412bdc6aabe))
+
 ## [0.9.0](https://github.com/redtidev1918/telepress/compare/v0.8.1...v0.9.0) (2026-09-17)
 
 
