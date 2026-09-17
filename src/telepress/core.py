@@ -100,6 +100,10 @@ class TelegraphPublisher(IPublisher):
     """
     IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
 
+    # Markdown inline image refs: `![alt](src)`. Alt may be empty; src stops at
+    # the first ')'. Remote/data refs are left alone by _upload_markdown_local_images.
+    MARKDOWN_LOCAL_IMG_RE = re.compile(r'!\[([^\]\n]*)\]\(([^)]+)\)')
+
     def __init__(
         self, 
         token: Optional[str] = None, 
@@ -192,6 +196,49 @@ class TelegraphPublisher(IPublisher):
                 f"Unsupported file type: '{ext}'. "
                 f"Supported formats: {', '.join(supported)}"
             )
+
+    def _upload_markdown_local_images(self, content: str, base_dir: str) -> str:
+        """
+        Upload local images referenced by markdown and substitute remote URLs.
+
+        Only filesystem paths that exist are uploaded; remote (http/https),
+        data: and protocol-relative refs are passed through unchanged so this
+        is also safe as a generic markdown prettifier. Partial upload failures
+        are non-fatal: the failed ref keeps its original src (the page still
+        publishes) and a short diagnostic is printed so the operator can see
+        exactly which asset failed.
+        """
+        local_paths = []
+        for _, src in self.MARKDOWN_LOCAL_IMG_RE.findall(content):
+            src = src.strip()
+            if src.startswith(('http://', 'https://', '//', 'data:')):
+                continue
+            path = os.path.normpath(os.path.join(base_dir, src))
+            if os.path.isfile(path):
+                local_paths.append(path)
+
+        if not local_paths:
+            return content
+
+        batch = self.uploader.upload_batch(local_paths, max_size=self.max_image_size)
+        url_map = batch.get_url_map()
+        failed = batch.get_failed_paths()
+        if failed:
+            print(
+                f"Warning: {len(failed)} markdown image(s) failed to upload; "
+                f"keeping original refs: {failed}",
+                flush=True,
+            )
+
+        def _replace(match) -> str:
+            src = match.group(2).strip()
+            if src.startswith(('http://', 'https://', '//', 'data:')):
+                return match.group(0)
+            path = os.path.normpath(os.path.join(base_dir, src))
+            url = url_map.get(path)
+            return f'![{match.group(1)}]({url})' if url else match.group(0)
+
+        return self.MARKDOWN_LOCAL_IMG_RE.sub(_replace, content)
 
     def _link_pages(self, pages_info: List[Dict]):
         """
@@ -315,6 +362,14 @@ class TelegraphPublisher(IPublisher):
             print(f"Skipping duplicate content, already published: {cached_url}")
             return cached_url
         
+        # Rich-media Phase 1: upload any local filesystem-referenced images
+        # (Catbox / configured ImageUploader) and swap the markdown refs to
+        # their remote URLs BEFORE conversion so Telegraph renders inline
+        # images in source order. Pure-text (no local image refs) is untouched.
+        content = self._upload_markdown_local_images(
+            content, os.path.dirname(os.path.abspath(file_path))
+        )
+
         # Split content if too large
         # Telegraph limit is ~64KB JSON. After markdown conversion, text expands.
         # Plain text with line breaks expands ~2x, so use 10KB to be safe.

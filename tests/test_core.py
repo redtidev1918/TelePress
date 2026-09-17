@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
 import os
+import json
 import tempfile
 import zipfile
 import shutil
@@ -1153,3 +1154,120 @@ class TestPublishOptimizedGallery(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestPublishMarkdownRichMedia(unittest.TestCase):
+    """RFC Phase 1: publish_markdown uploads local images and renders inline."""
+
+    def setUp(self):
+        with patch('telepress.core.TelegraphAuth') as MockAuth:
+            self.mock_client = MagicMock()
+            MockAuth.return_value.get_client.return_value = self.mock_client
+            self.publisher = TelegraphPublisher(token="fake", skip_duplicate=False)
+            self.publisher.uploader = MagicMock()
+        self._dir = tempfile.mkdtemp()
+        self._images = os.path.join(self._dir, "images")
+        os.makedirs(self._images, exist_ok=True)
+        self._img1 = os.path.join(self._images, "001.jpg")
+        self._img2 = os.path.join(self._images, "002.jpg")
+        for p in (self._img1, self._img2):
+            with open(p, "wb") as fh:
+                fh.write(b"fake jpeg data")
+
+    def tearDown(self):
+        shutil.rmtree(self._dir, ignore_errors=True)
+
+    def _write_md(self, text):
+        path = os.path.join(self._dir, "novel.md")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        return path
+
+    @staticmethod
+    def _batch(url_map, failed=()):
+        b = MagicMock()
+        b.get_url_map.return_value = url_map
+        b.get_failed_paths.return_value = list(failed)
+        b.results = []
+        return b
+
+    def test_pure_text_no_upload(self):
+        """Pure-TXT / no local image refs keeps the old path (no upload)."""
+        path = self._write_md("# 标题\n\n这是正文内容，没有图片。")
+        self.mock_client.create_page.return_value = {'url': 'http://telegra.ph/p', 'path': 'p'}
+        self.publisher.uploader.upload_batch.return_value = self._batch({})
+
+        url = self.publisher.publish_markdown(path, title="纯文本")
+
+        self.assertEqual(url, 'http://telegra.ph/p')
+        self.publisher.uploader.upload_batch.assert_not_called()
+
+    def test_single_illustration_uploaded(self):
+        """Single illustration: local ref -> Catbox URL, rendered inline."""
+        md = "开场白\n\n![插图](images/001.jpg)\n\n结尾"
+        path = self._write_md(md)
+        self.publisher.uploader.upload_batch.return_value = self._batch(
+            {self._img1: "https://files.catbox.moe/aaa.jpg"}
+        )
+        self.mock_client.create_page.return_value = {'url': 'http://telegra.ph/p', 'path': 'p'}
+
+        self.publisher.publish_markdown(path, title="单图")
+
+        self.publisher.uploader.upload_batch.assert_called_once()
+        args, kwargs = self.publisher.uploader.upload_batch.call_args
+        self.assertEqual(args[0], [self._img1])
+        content = self.mock_client.create_page.call_args[1]['content']
+        blob = json.dumps(content)
+        self.assertIn("https://files.catbox.moe/aaa.jpg", blob)
+        self.assertNotIn("images/001.jpg", blob)
+
+    def test_multi_illustration_order_preserved(self):
+        """Multiple illustrations keep source order in the Telegraph nodes."""
+        md = "![一](images/001.jpg)\n\n正文中间\n\n![二](images/002.jpg)"
+        path = self._write_md(md)
+        self.publisher.uploader.upload_batch.return_value = self._batch({
+            self._img1: "https://files.catbox.moe/aaa.jpg",
+            self._img2: "https://files.catbox.moe/bbb.jpg",
+        })
+        self.mock_client.create_page.return_value = {'url': 'http://telegra.ph/p', 'path': 'p'}
+
+        self.publisher.publish_markdown(path, title="多图")
+
+        args, _ = self.publisher.uploader.upload_batch.call_args
+        self.assertEqual(args[0], [self._img1, self._img2])
+        content = self.mock_client.create_page.call_args[1]['content']
+        blob = json.dumps(content)
+        self.assertLess(blob.index("https://files.catbox.moe/aaa.jpg"),
+                        blob.index("https://files.catbox.moe/bbb.jpg"))
+
+    def test_catbox_partial_failure_is_diagnostic_and_nonfatal(self):
+        """One image fails: page still publishes, failed ref is preserved."""
+        md = "![一](images/001.jpg)\n\n![二](images/002.jpg)"
+        path = self._write_md(md)
+        # 001 succeeds, 002 fails.
+        self.publisher.uploader.upload_batch.return_value = self._batch(
+            {self._img1: "https://files.catbox.moe/aaa.jpg"},
+            failed=[self._img2],
+        )
+        self.mock_client.create_page.return_value = {'url': 'http://telegra.ph/p', 'path': 'p'}
+
+        url = self.publisher.publish_markdown(path, title="部分失败")
+
+        self.assertEqual(url, 'http://telegra.ph/p')
+        content = self.mock_client.create_page.call_args[1]['content']
+        blob = json.dumps(content)
+        self.assertIn("https://files.catbox.moe/aaa.jpg", blob)
+        # The failed ref stays as the original relative markdown (diagnostic sample).
+        self.publisher.uploader.upload_batch.assert_called_once()
+
+    def test_telegraph_generation_failure_propagates(self):
+        """Telegraph create failure with images still surfaces the error."""
+        md = "![一](images/001.jpg)"
+        path = self._write_md(md)
+        self.publisher.uploader.upload_batch.return_value = self._batch(
+            {self._img1: "https://files.catbox.moe/aaa.jpg"}
+        )
+        self.mock_client.create_page.side_effect = Exception("telegraph down")
+        with patch('telepress.core.time.sleep'):
+            with self.assertRaises(RuntimeError):
+                self.publisher.publish_markdown(path, title="telegraph失败")
