@@ -4,6 +4,15 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.9.0](https://github.com/redtidev1918/telepress/compare/v0.8.1...v0.9.0) (2026-09-17)
+
+
+### Features
+
+* **publish:** rich novel pipeline (local image upload + Telegraph nodes) ([320afef](https://github.com/redtidev1918/telepress/commit/320afef4896a06f5c333675d93a6e9a62625aff8))
+* **publish:** rich NovelMarkdownRenderer for Telegraph nodes (RFC Phase 2) ([9d99d90](https://github.com/redtidev1918/telepress/commit/9d99d904f32f163d1d0e7da5d179aa43c608cdb8))
+* **publish:** upload and inline local markdown images (RFC Phase 1) ([5ef27d9](https://github.com/redtidev1918/telepress/commit/5ef27d97d8c6e4628cf4489a8cb89e0e4c850701))
+
 ## [0.8.1](https://github.com/redtidev1918/telepress/compare/v0.8.0...v0.8.1) (2026-09-16)
 
 
