@@ -197,7 +197,7 @@ class TelegraphPublisher(IPublisher):
                 f"Supported formats: {', '.join(supported)}"
             )
 
-    def _upload_markdown_local_images(self, content: str, base_dir: str) -> str:
+    def _upload_markdown_local_images(self, content: str, base_dir: str):
         """
         Upload local images referenced by markdown and substitute remote URLs.
 
@@ -207,6 +207,10 @@ class TelegraphPublisher(IPublisher):
         are non-fatal: the failed ref keeps its original src (the page still
         publishes) and a short diagnostic is printed so the operator can see
         exactly which asset failed.
+
+        Returns ``(content, assets)`` where ``assets`` is a list of
+        ``{local, remote, status}`` dicts covering every local image the
+        markdown referenced (``uploaded`` / ``failed``).
         """
         local_paths = []
         for _, src in self.MARKDOWN_LOCAL_IMG_RE.findall(content):
@@ -218,7 +222,7 @@ class TelegraphPublisher(IPublisher):
                 local_paths.append(path)
 
         if not local_paths:
-            return content
+            return content, []
 
         batch = self.uploader.upload_batch(local_paths, max_size=self.max_image_size)
         url_map = batch.get_url_map()
@@ -230,6 +234,15 @@ class TelegraphPublisher(IPublisher):
                 flush=True,
             )
 
+        assets = []
+        for path in local_paths:
+            url = url_map.get(path)
+            assets.append({
+                'local': os.path.relpath(path, base_dir).replace(os.sep, '/'),
+                'remote': url,
+                'status': 'uploaded' if url else 'failed',
+            })
+
         def _replace(match) -> str:
             src = match.group(2).strip()
             if src.startswith(('http://', 'https://', '//', 'data:')):
@@ -238,7 +251,7 @@ class TelegraphPublisher(IPublisher):
             url = url_map.get(path)
             return f'![{match.group(1)}]({url})' if url else match.group(0)
 
-        return self.MARKDOWN_LOCAL_IMG_RE.sub(_replace, content)
+        return self.MARKDOWN_LOCAL_IMG_RE.sub(_replace, content), assets
 
     def _link_pages(self, pages_info: List[Dict]):
         """
@@ -366,7 +379,7 @@ class TelegraphPublisher(IPublisher):
         # (Catbox / configured ImageUploader) and swap the markdown refs to
         # their remote URLs BEFORE conversion so Telegraph renders inline
         # images in source order. Pure-text (no local image refs) is untouched.
-        content = self._upload_markdown_local_images(
+        content, _ = self._upload_markdown_local_images(
             content, os.path.dirname(os.path.abspath(file_path))
         )
 
@@ -459,6 +472,44 @@ class TelegraphPublisher(IPublisher):
             _save_cache(self._cache)
         
         return result_url
+
+    def publish_rich_markdown(self, file_path: str, title: str) -> Dict:
+        """
+        Publish a rich-novel markdown file with local image assets.
+
+        Unlike :meth:`publish_markdown` (which uploads local refs and returns a
+        plain URL), this returns ``{url, assets: [{local, remote, status}]}`` so
+        the caller can prove which local images were uploaded and which failed.
+        The publishing itself reuses :meth:`publish_markdown` by first rewriting
+        local image refs to remote URLs, so pagination/deduplication behaviour is
+        identical to the existing rich-markdown path.
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            raise ValidationError("Cannot read markdown as text")
+
+        if not content.strip():
+            raise ValidationError("File is empty or contains only whitespace")
+
+        content, assets = self._upload_markdown_local_images(
+            content, os.path.dirname(os.path.abspath(file_path))
+        )
+
+        fd, tmp_path = tempfile.mkstemp(suffix='.md', prefix='telepress-rich-')
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                f.write(content)
+            url = self.publish_markdown(tmp_path, title)
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+        return {'url': url, 'assets': assets}
+
 
     def publish_image(self, image_path: str, title: str) -> str:
         """Publish a single image to Telegraph."""

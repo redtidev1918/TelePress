@@ -409,6 +409,85 @@ if __name__ == '__main__':
     unittest.main()
 
 
+class TestRichNovelEndpoint(unittest.TestCase):
+    """RFC Phase 3: /publish/rich-novel accepts md + images and reports assets."""
+
+    def setUp(self):
+        self.patcher = patch('telepress.server.TelegraphPublisher')
+        self.mock_publisher_class = self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+        self.mock_publisher_instance = MagicMock()
+        self.mock_publisher_class.return_value = self.mock_publisher_instance
+        self.mock_publisher_instance.publish_rich_markdown.return_value = {
+            'url': 'http://telegra.ph/rich',
+            'assets': [
+                {'local': 'images/001.jpg', 'remote': 'https://files.catbox.moe/a.jpg',
+                 'status': 'uploaded'},
+                {'local': 'images/002.jpg', 'remote': None, 'status': 'failed'},
+            ],
+        }
+        from telepress.server import app
+        self.client = TestClient(app)
+
+    def _request(self, title='富媒体小说', token='tok'):
+        return self.client.post(
+            '/publish/rich-novel',
+            files=[
+                ('md', ('novel.md', '![图](images/001.jpg)\n\n正文'.encode(), 'text/markdown')),
+                ('images', ('images/001.jpg', b'fake1', 'image/jpeg')),
+                ('images', ('images/002.jpg', b'fake2', 'image/jpeg')),
+            ],
+            data={'title': title, 'token': token},
+        )
+
+    def test_rich_novel_success(self):
+        seen = {}
+
+        def fake_publish(md_path, title):
+            seen['md_path'] = md_path
+            seen['title'] = title
+            seen['img1'] = os.path.isfile(
+                os.path.join(os.path.dirname(md_path), 'images', '001.jpg'))
+            seen['img2'] = os.path.isfile(
+                os.path.join(os.path.dirname(md_path), 'images', '002.jpg'))
+            return {
+                'url': 'http://telegra.ph/rich',
+                'assets': [
+                    {'local': 'images/001.jpg', 'remote': 'https://files.catbox.moe/a.jpg',
+                     'status': 'uploaded'},
+                    {'local': 'images/002.jpg', 'remote': None, 'status': 'failed'},
+                ],
+            }
+
+        self.mock_publisher_instance.publish_rich_markdown.side_effect = fake_publish
+        response = self._request()
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['url'], 'http://telegra.ph/rich')
+        self.assertEqual(len(data['assets']), 2)
+        self.assertEqual(data['assets'][0]['remote'], 'https://files.catbox.moe/a.jpg')
+        self.assertEqual(data['assets'][1]['status'], 'failed')
+        self.assertEqual(seen['title'], '富媒体小说')
+        self.assertTrue(seen['img1'])
+        self.assertTrue(seen['img2'])
+
+    @patch('telepress.server.TelegraphPublisher')
+    def test_rich_novel_error_returns_400(self, MockPublisher):
+        from telepress.exceptions import ValidationError
+        mock_instance = MagicMock()
+        mock_instance.publish_rich_markdown.side_effect = ValidationError("missing md")
+        MockPublisher.return_value = mock_instance
+        from telepress.server import app
+        client = TestClient(app)
+        response = client.post(
+            '/publish/rich-novel',
+            files=[('md', ('novel.md', '内容'.encode(), 'text/markdown'))],
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('missing md', response.json()['detail'])
+
+
 class TestServerApiKeyAuth(unittest.TestCase):
     """请求级 Bearer/X-TelePress-Key 鉴权（TELEPRESS_API_KEY）。"""
 
