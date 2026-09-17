@@ -1271,3 +1271,38 @@ class TestPublishMarkdownRichMedia(unittest.TestCase):
         with patch('telepress.core.time.sleep'):
             with self.assertRaises(RuntimeError):
                 self.publisher.publish_markdown(path, title="telegraph失败")
+
+    def test_publish_rich_markdown_returns_assets(self):
+        """Rich publish returns {url, assets} with the uploaded mapping."""
+        md = "开场白\n\n![插图](images/001.jpg)\n\n结尾"
+        path = self._write_md(md)
+        self.publisher.uploader.upload_batch.return_value = self._batch(
+            {self._img1: "https://files.catbox.moe/aaa.jpg"}
+        )
+        self.mock_client.create_page.return_value = {'url': 'http://telegra.ph/rich', 'path': 'rich'}
+
+        result = self.publisher.publish_rich_markdown(path, title="富媒体")
+
+        self.assertEqual(result['url'], 'http://telegra.ph/rich')
+        self.assertEqual(len(result['assets']), 1)
+        self.assertEqual(result['assets'][0]['local'], 'images/001.jpg')
+        self.assertEqual(result['assets'][0]['remote'], 'https://files.catbox.moe/aaa.jpg')
+        self.assertEqual(result['assets'][0]['status'], 'uploaded')
+
+    def test_publish_rich_markdown_partial_failure_marks_asset(self):
+        """Failed asset is reported as failed with no remote URL; page still publishes."""
+        md = "![一](images/001.jpg)\n\n![二](images/002.jpg)"
+        path = self._write_md(md)
+        self.publisher.uploader.upload_batch.return_value = self._batch(
+            {self._img1: "https://files.catbox.moe/aaa.jpg"},
+            failed=[self._img2],
+        )
+        self.mock_client.create_page.return_value = {'url': 'http://telegra.ph/rich', 'path': 'rich'}
+
+        result = self.publisher.publish_rich_markdown(path, title="部分失败")
+
+        self.assertEqual(result['url'], 'http://telegra.ph/rich')
+        by_local = {a['local']: a for a in result['assets']}
+        self.assertEqual(by_local['images/001.jpg']['status'], 'uploaded')
+        self.assertEqual(by_local['images/002.jpg']['status'], 'failed')
+        self.assertIsNone(by_local['images/002.jpg']['remote'])

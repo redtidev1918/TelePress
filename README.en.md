@@ -103,6 +103,12 @@ curl -X POST http://127.0.0.1:8000/publish/gallery \
   -F "tags=pixiv, illustration" \
   -F "link=https://www.pixiv.net/artworks/123456" \
   -F "spoiler=true"
+
+curl -X POST http://127.0.0.1:8000/publish/rich-novel \
+  -F "md=@novel.md" \
+  -F "images=@images/001.jpg" \
+  -F "images=@images/002.jpg" \
+  -F "title=Rich Novel"
 ```
 
 `/publish/gallery` accepts repeated `files` parts plus optional `title`,
@@ -113,6 +119,15 @@ and the R-18 warning are rendered as a footer on the first page. It returns
 `{"ok": true, "url": "...", "files": N}` and is compatible with generic
 multipart delivery clients, e.g. PixivFlow `httpMultipart` targets pointing
 at `http://<telepress-host>:8000/publish/gallery`.
+
+`/publish/rich-novel` takes one `md` part, repeated `images` parts and an optional
+`title`. The markdown references local images with relative paths (e.g.
+`![](images/001.jpg)`); each image multipart name must match the reference path
+(e.g. `images/001.jpg`). Images are uploaded to the configured host (e.g.
+Catbox), refs are rewritten to remote URLs and rendered as inline Telegraph
+nodes in source order. It returns
+`{"url": "...", "assets": [{"local", "remote", "status"}]}` where each local
+asset reports `uploaded` / `failed`; a failed asset does not prevent publishing.
 
 Blocking file, compression, and network work is dispatched away from the API
 event loop, so concurrent requests do not serialize on those operations.

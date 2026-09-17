@@ -61,6 +61,16 @@ class GalleryPublishResponse(BaseModel):
     ok: bool = True
     files: int = 0
 
+class RichNovelAsset(BaseModel):
+    local: str
+    remote: Optional[str] = None
+    status: str = "uploaded"
+
+class RichNovelResponse(BaseModel):
+    url: str
+    status: str = "success"
+    assets: List[RichNovelAsset] = []
+
 def get_publisher(token: Optional[str] = None):
     try:
         return TelegraphPublisher(token=token)
@@ -170,6 +180,40 @@ def _publish_gallery_worker(
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
+
+def _publish_rich_novel_worker(
+    md_file,
+    image_files,
+    title: Optional[str],
+    token: Optional[str]
+) -> Dict:
+    """
+    Save an uploaded markdown + image set, upload the images, render Telegraph
+    nodes and return ``{url, assets}``. Runs off the async event loop because
+    publishing performs synchronous HTTP requests.
+    """
+    tmp_dir = tempfile.mkdtemp(prefix='telepress-rich-')
+    try:
+        md_suffix = os.path.splitext(md_file.filename or 'novel.md')[1] or '.md'
+        md_path = os.path.join(tmp_dir, 'novel' + md_suffix)
+        with open(md_path, 'wb') as out:
+            shutil.copyfileobj(md_file.file, out)
+
+        for upload in image_files:
+            filename = (upload.filename or '').replace('\\', '/')
+            parts = [p for p in filename.split('/') if p and p not in ('.', '..')]
+            if not parts:
+                continue
+            dest = os.path.join(tmp_dir, *parts)
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            with open(dest, 'wb') as out:
+                shutil.copyfileobj(upload.file, out)
+
+        publisher = get_publisher(token)
+        return publisher.publish_rich_markdown(md_path, title=title or 'Novel')
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
 @app.get("/")
 def health_check():
     return {"status": "ok", "service": "telepress"}
@@ -259,6 +303,33 @@ async def publish_gallery(
         return GalleryPublishResponse(
             url=result['url'], files=result['files']
         )
+    except TelePressError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/publish/rich-novel", response_model=RichNovelResponse, dependencies=_api_auth)
+async def publish_rich_novel(
+    md: UploadFile = File(...),
+    images: Optional[List[UploadFile]] = File(None),
+    title: Optional[str] = Form(None),
+    token: Optional[str] = Form(None)
+):
+    """
+    Publish a rich novel (markdown + local images) to Telegraph.
+
+    ``md`` is the markdown with ``![](images/xxx.jpg)``-style local references;
+    each file in ``images`` must carry the same relative path as its markdown
+    refs (e.g. ``images/001.jpg``). Images are uploaded to the configured image
+    host (Catbox), refs are rewritten to remote URLs, Telegraph nodes are
+    rendered in source order and the page is published. Returns the page URL
+    plus an ``assets`` map so the caller can see exactly which upload failed.
+    """
+    try:
+        result = await run_in_threadpool(
+            _publish_rich_novel_worker, md, images or [], title, token
+        )
+        return RichNovelResponse(url=result['url'], assets=result.get('assets', []))
     except TelePressError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

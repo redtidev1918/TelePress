@@ -100,6 +100,12 @@ curl -X POST http://127.0.0.1:8000/publish/gallery \
   -F "tags=pixiv, illustration" \
   -F "link=https://www.pixiv.net/artworks/123456" \
   -F "spoiler=true"
+
+curl -X POST http://127.0.0.1:8000/publish/rich-novel \
+  -F "md=@novel.md" \
+  -F "images=@images/001.jpg" \
+  -F "images=@images/002.jpg" \
+  -F "title=富媒体小说"
 ```
 
 `/publish/gallery` 接收可重复的 `files` 文件字段，以及可选的 `title`、
@@ -109,6 +115,14 @@ curl -X POST http://127.0.0.1:8000/publish/gallery \
 返回 `{"ok": true, "url": "...", "files": N}`，兼容通用 multipart 交付
 客户端，例如 PixivFlow 的 `httpMultipart` 目标指向
 `http://<telepress-host>:8000/publish/gallery`。
+
+`/publish/rich-novel` 接收一个 `md` 文件字段、可重复的 `images` 文件字段和可选
+的 `title`。`md` 用相对路径引用本地图（例如 `![](images/001.jpg)`），每个
+`images` 的 multipart 文件名必须与引用路径一致（例如 `images/001.jpg`）。图片
+会先上传到配置的图床（如 Catbox），引用改写成远端 URL 后按源顺序渲染成
+Telegraph 节点并发布。返回 `{"url": "...", "assets": [{"local", "remote",
+"status"}], ...}`，`assets` 里每个本地图都能看到 `uploaded` / `failed`，失败
+不致命、页面仍会发布。
 
 文件读写、图片压缩和同步网络请求会在线程池执行，不会阻塞 API 的异步事件循环。
 
