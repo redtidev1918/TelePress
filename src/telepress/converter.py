@@ -110,3 +110,23 @@ class MarkdownConverter:
             return sanitize_nodes(nodes)
         else:
             return [{'tag': 'p', 'children': [md_content]}]
+
+
+class NovelMarkdownRenderer:
+    """Rich-novel Telegraph renderer (RFC Phase 2), reusing MarkdownConverter.
+
+    Produces Telegraph DOM nodes from markdown that already carries remote
+    image URLs (Phase 1 uploads local assets first). A thin adapter, not a
+    second pipeline: paragraphs, headings and inline ``<img>`` nodes come from
+    the proven MarkdownConverter; this renderer only drops the whitespace-only
+    string leaves html_to_nodes leaves between blocks. Images are always
+    rendered as ``{tag: 'img', attrs: {src}}`` nodes in source order, never
+    degraded to plain-text links.
+    """
+
+    def __init__(self):
+        self._converter = MarkdownConverter()
+
+    def convert(self, md_content: str) -> List[Dict]:
+        nodes = self._converter.convert(md_content)
+        return [n for n in nodes if not (isinstance(n, str) and not n.strip())]

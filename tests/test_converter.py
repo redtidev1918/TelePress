@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from telepress.converter import MarkdownConverter
+from telepress.converter import MarkdownConverter, NovelMarkdownRenderer
 from telepress.exceptions import DependencyError
 
 
@@ -171,6 +171,55 @@ class TestConverterDependency(unittest.TestCase):
         """Test that missing markdown library raises DependencyError."""
         with self.assertRaises(DependencyError):
             MarkdownConverter()
+
+
+
+
+class TestNovelMarkdownRenderer(unittest.TestCase):
+    """RFC Phase 2: rich-novel Telegraph node renderer."""
+
+    def setUp(self):
+        self.renderer = NovelMarkdownRenderer()
+
+    def test_paragraphs_images_headings_and_breaks(self):
+        md = "# 标题\n\n## 作者\n\n正文第一段。\n\n![图一](https://files.catbox.moe/aaa.jpg)\n\n正文第二段。\n\n![图二](https://files.catbox.moe/bbb.jpg)"
+        nodes = self.renderer.convert(md)
+
+        def _walk(items, found):
+            for n in items:
+                if isinstance(n, dict):
+                    found.append(n.get('tag'))
+                    _walk(n.get('children', []), found)
+                elif isinstance(n, list):
+                    _walk(n, found)
+        tags = []
+        _walk(nodes, tags)
+
+        self.assertIn('h3', tags)          # # heading -> h3
+        self.assertIn('h4', tags)          # ## -> h4 (author)
+        self.assertGreaterEqual(tags.count('img'), 2)
+        self.assertGreaterEqual(tags.count('p'), 2)
+
+    def test_images_are_inline_nodes_not_plain_text_links(self):
+        md = "![图](https://files.catbox.moe/aaa.jpg)"
+        nodes = self.renderer.convert(md)
+        blob = str(nodes)
+        self.assertIn("catbox.moe/aaa.jpg", blob)
+        # No plain-text <a> link nodes wrapping the image source.
+        for node in nodes:
+            self.assertFalse(isinstance(node, dict) and node.get('tag') == 'a' and
+                             'aaa.jpg' in str(node.get('attrs', {})))
+
+    def test_image_order_preserved(self):
+        md = "![一](https://files.catbox.moe/a.jpg)\n\n中间\n\n![二](https://files.catbox.moe/b.jpg)"
+        nodes = self.renderer.convert(md)
+        blob = str(nodes)
+        self.assertLess(blob.index("a.jpg"), blob.index("b.jpg"))
+
+    def test_no_whitespace_only_leaves(self):
+        nodes = self.renderer.convert("段落一\n\n![图](https://files.catbox.moe/a.jpg)\n\n段落二")
+        for node in nodes:
+            self.assertFalse(isinstance(node, str) and not node.strip())
 
 
 if __name__ == '__main__':
