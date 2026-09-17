@@ -14,7 +14,7 @@ except ImportError:
 
 from .auth import TelegraphAuth
 from .config import load_config
-from .converter import MarkdownConverter
+from .converter import NovelMarkdownRenderer
 from .uploader import ImageUploader
 from .utils import (
     natural_sort_key, safe_extract_zip, validate_file_size,
@@ -118,7 +118,7 @@ class TelegraphPublisher(IPublisher):
 
         self.auth = TelegraphAuth()
         self.client = self.auth.get_client(token, short_name)
-        self.converter = MarkdownConverter()
+        self.converter = NovelMarkdownRenderer()
         self.skip_duplicate = skip_duplicate
         self._cache = _load_cache() if skip_duplicate else {}
         self.auto_compress = auto_compress
