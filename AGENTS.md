@@ -1,6 +1,12 @@
 # AGENTS.md —— telepress 是「发布平面」
 
-写给任何进入本仓库的智能体或工程师。职责契约：telepress 负责把已经过审的内容
+写给任何进入本仓库的智能体或工程师。跨仓库的职责与执行纪律的唯一权威在：
+
+* `pixivflow-telepost-deploy/AGENTS.md`（PixivFlow Ecosystem Agent Operating Contract）
+* `pixivflow-telepost-deploy/docs/architecture/ecosystem-platform.md`（长期架构）
+* `pixivflow-telepost-deploy/docs/operations/current-state.md`（当前生产状态）
+
+本文件只保留本仓边界与特殊约束。本仓职责：telepress 负责把已经过审的内容
 发布为富媒体（Markdown / 图片 / Tealegraph preview / Catbox），并通过 `/publish/rich-novel` 返回
 `{url, assets[]}` 供 PixivFlow 注入 novel_preview_url。
 
