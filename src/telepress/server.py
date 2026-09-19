@@ -13,6 +13,7 @@ import hmac
 import shutil
 import tempfile
 import zipfile
+import urllib.request
 from .core import TelegraphPublisher
 from .exceptions import TelePressError, ValidationError
 
@@ -137,7 +138,8 @@ def _publish_gallery_worker(
     tags: Optional[str],
     link: Optional[str],
     spoiler: Optional[str],
-    token: Optional[str]
+    token: Optional[str],
+    media_fetched: Optional[list] = None
 ) -> Dict:
     """
     Save the uploaded images in order, pack them into a zip, and publish them
@@ -146,6 +148,8 @@ def _publish_gallery_worker(
     """
     tmp_dir = tempfile.mkdtemp(prefix='telepress-gallery-')
     try:
+        files = files or []
+        media_fetched = media_fetched or []
         paths = []
         used_names = set()
         for index, upload in enumerate(files, start=1):
@@ -163,8 +167,40 @@ def _publish_gallery_worker(
                 shutil.copyfileobj(upload.file, out)
             paths.append(dest)
 
+        for index, ref in enumerate(media_fetched, start=1):
+            if not isinstance(ref, dict):
+                raise ValidationError("media entries must be objects")
+            source = ref.get('sourceUrl') or ref.get('source') or ref.get('source_url')
+            if not source or not str(source).startswith('https://'):
+                raise ValidationError(f"media[{index}] sourceUrl must be an https URL")
+            filename = str(ref.get('filename') or f'image_{index + len(files)}.jpg')
+            candidate = os.path.basename(filename) or f'image_{index + len(files)}.jpg'
+            counter = 1
+            while candidate in used_names:
+                base, ext = os.path.splitext(candidate)
+                candidate = f'{base}_{counter}{ext}'
+                counter += 1
+            used_names.add(candidate)
+            dest = os.path.join(tmp_dir, candidate)
+            total = 0
+            try:
+                with urllib.request.urlopen(source, timeout=60) as resp, open(dest, 'wb') as out:
+                    while True:
+                        chunk = resp.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        total += len(chunk)
+                        if total > 50 * 1024 * 1024:
+                            raise ValidationError(f"media[{index}] exceeds the 50 MiB gallery cap")
+                        out.write(chunk)
+            except ValidationError:
+                raise
+            except Exception as exc:
+                raise ValidationError(f"media[{index}] could not be fetched: {exc}") from exc
+            paths.append(dest)
+
         if not paths:
-            raise ValidationError("No files provided for gallery publishing")
+            raise ValidationError("No files or media provided for gallery publishing")
 
         zip_path = os.path.join(tmp_dir, 'gallery.zip')
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -285,12 +321,13 @@ async def publish_file(
 
 @app.post("/publish/gallery", response_model=GalleryPublishResponse, dependencies=_api_auth)
 async def publish_gallery(
-    files: List[UploadFile] = File(...),
+    files: Optional[List[UploadFile]] = File(None),
     title: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
     link: Optional[str] = Form(None),
     spoiler: Optional[str] = Form(None),
-    token: Optional[str] = Form(None)
+    token: Optional[str] = Form(None),
+    media: Optional[str] = Form(None)
 ):
     """
     Upload multiple image files and publish them as a Telegra.ph gallery.
@@ -304,9 +341,21 @@ async def publish_gallery(
     Compatible with generic multipart delivery clients (e.g. PixivFlow
     `httpMultipart` targets posting repeated `files` parts).
     """
+    import json as _json
+    parsed_media = None
+    if media:
+        try:
+            parsed_media = _json.loads(media)
+            if not isinstance(parsed_media, list):
+                raise ValueError("media must be a JSON list")
+        except (ValueError, _json.JSONDecodeError) as exc:
+            raise HTTPException(status_code=400, detail=f"media 解析失败: {exc}")
+    if not files and not parsed_media:
+        raise HTTPException(status_code=422, detail="Provide files or media")
     try:
         result = await run_in_threadpool(
-            _publish_gallery_worker, files, title, tags, link, spoiler, token
+            _publish_gallery_worker, files, title, tags, link, spoiler, token,
+            parsed_media or [],
         )
         return GalleryPublishResponse(
             url=result['url'], files=result['files']

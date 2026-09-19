@@ -341,6 +341,47 @@ class TestGalleryEndpoint(unittest.TestCase):
         response = self.client.post("/publish/gallery")
         self.assertEqual(response.status_code, 422)
 
+    @patch('telepress.server.urllib.request.urlopen')
+    def test_publish_gallery_media_manifest(self, mock_urlopen):
+        """Test remote MediaReference[] manifest path publishes without uploading files."""
+        import json as _json
+
+        class FakeResp:
+            def __init__(self):
+                self.first = True
+
+            def read(self, n=None):
+                if self.first:
+                    self.first = False
+                    return b'img-bytes'
+                return b''
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        mock_urlopen.return_value = FakeResp()
+        response = self.client.post(
+            "/publish/gallery",
+            data={
+                "title": "Manifest",
+                "link": "https://www.deviantart.com/a/art/x-1",
+                "media": _json.dumps([
+                    {"assetId": "deviantart:u1:p0", "kind": "photo", "sourceUrl": "https://cdn.test/1.jpg"},
+                    {"assetId": "deviantart:u1:p1", "kind": "photo", "sourceUrl": "https://cdn.test/2.jpg"},
+                ]),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['files'], 2)
+        call_args = self.mock_publisher_instance.publish_zip_gallery.call_args
+        self.assertEqual(call_args[1]['title'], 'Manifest')
+        self.assertEqual(mock_urlopen.call_count, 2)
+
     @patch('telepress.server.TelegraphPublisher')
     def test_publish_gallery_telepress_error(self, MockPublisher):
         """Test that TelePressError returns 400."""
