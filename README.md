@@ -116,6 +116,13 @@ curl -X POST http://127.0.0.1:8000/publish/rich-novel \
 客户端，例如 PixivFlow 的 `httpMultipart` 目标指向
 `http://<telepress-host>:8000/publish/gallery`。
 
+`/publish/gallery` 的远程媒体 manifest 是**可选开关**：默认仍只接受重复 `files`
+multipart（通用交付契约）。只有设置 `TELEPRESS_ALLOW_REMOTE_GALLERY_MEDIA=1` 并传入
+`media` JSON 表单字段（`[{"assetId","kind","sourceUrl","filename"}]`）时，服务端
+才会代为抓取 https 图源（单文件 50 MiB 上限）；未开启或抓取失败都不影响原有
+multipart 路径。
+
+
 `/publish/rich-novel` 接收一个 `md` 文件字段、可重复的 `images` 文件字段和可选
 的 `title`。`md` 用相对路径引用本地图（例如 `![](images/001.jpg)`），每个
 `images` 的 multipart 文件名必须与引用路径一致（例如 `images/001.jpg`）。图片
@@ -130,11 +137,18 @@ Telegraph 节点并发布。返回 `{"url": "...", "assets": [{"local", "remote"
 [{"local": "images/001.jpg", "source": "https://i.pximg.net/..."}]
 ```
 
-当设置 `TELEPRESS_PIXIV_PROXY_BASE`（指向固定 `i.pximg.net` 上游的 Cloudflare
-Worker）时，`source` 是 Pixiv CDN 图片的条目会被改写成
-`<base>/pixiv/...` 并直接使用，asset 状态为 `proxied`；没有 proxy、或 `source`
-不是 Pixiv CDN 时，继续走现有图床上传作为 fallback。Worker 只接受
-`GET/HEAD`、上游固定在 `i.pximg.net`，不会成为开放代理。
+以上 `manifest` 的代理改写是**通用 CDN 代理**，不再耦合 Pixiv：
+
+- `TELEPRESS_MEDIA_PROXY_BASE`：代理入口 base URL（例如你的 Cloudflare Worker）。
+- `TELEPRESS_MEDIA_PROXY_HOSTS`：允许改写的上游 CDN host 逗号列表（例如
+  `i.pximg.net, i.etsystatic.com`）。只改写 host 在列表里的 `https` 条目，
+  否则继续走图床上传 fallback，避免变成开放代理/SSRF。
+- `TELEPRESS_MEDIA_PROXY_PATH_PREFIX`：可选路由前缀，默认 `media`；改写结果
+  为 `<base>/<prefix>/<host>/<path>`。
+
+兼容旧配置：只设置旧的 `TELEPRESS_PIXIV_PROXY_BASE` 时保持原行为，仅放行
+`i.pximg.net` 并改写成 `<base>/pixiv/<path>`；代理本身只接受 `GET/HEAD`，
+上游固定在你配置的代理服务里。
 
 文件读写、图片压缩和同步网络请求会在线程池执行，不会阻塞 API 的异步事件循环。
 

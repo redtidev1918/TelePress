@@ -13,6 +13,7 @@ import hmac
 import shutil
 import tempfile
 import zipfile
+import urllib.request
 from .core import TelegraphPublisher
 from .exceptions import TelePressError, ValidationError
 
@@ -131,13 +132,27 @@ def _build_gallery_footer(
     return nodes
 
 
+
+def _gallery_remote_media_enabled() -> bool:
+    """Remote MediaReference fetch for /publish/gallery is opt-in.
+
+    Off by default so a loopback-only TelePress (no place behind a public
+    reverse proxy) never becomes an open fetch proxy. Set
+    ``TELEPRESS_ALLOW_REMOTE_GALLERY_MEDIA=1`` only if you accept the blast
+    radius of server-side URL fetching (https-only, 50 MiB cap) for your own
+    clients.
+    """
+    return os.environ.get("TELEPRESS_ALLOW_REMOTE_GALLERY_MEDIA", "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def _publish_gallery_worker(
     files,
     title: Optional[str],
     tags: Optional[str],
     link: Optional[str],
     spoiler: Optional[str],
-    token: Optional[str]
+    token: Optional[str],
+    media_fetched: Optional[list] = None
 ) -> Dict:
     """
     Save the uploaded images in order, pack them into a zip, and publish them
@@ -146,6 +161,8 @@ def _publish_gallery_worker(
     """
     tmp_dir = tempfile.mkdtemp(prefix='telepress-gallery-')
     try:
+        files = files or []
+        media_fetched = media_fetched or []
         paths = []
         used_names = set()
         for index, upload in enumerate(files, start=1):
@@ -163,8 +180,40 @@ def _publish_gallery_worker(
                 shutil.copyfileobj(upload.file, out)
             paths.append(dest)
 
+        for index, ref in enumerate(media_fetched, start=1):
+            if not isinstance(ref, dict):
+                raise ValidationError(f"media[{index}] entries must be objects")
+            source = ref.get('sourceUrl') or ref.get('source') or ref.get('source_url')
+            if not source or not str(source).startswith('https://'):
+                raise ValidationError(f"media[{index}] sourceUrl must be an https URL")
+            filename = str(ref.get('filename') or f'image_{index + len(files)}.jpg')
+            candidate = os.path.basename(filename) or f'image_{index + len(files)}.jpg'
+            counter = 1
+            while candidate in used_names:
+                base, ext = os.path.splitext(candidate)
+                candidate = f'{base}_{counter}{ext}'
+                counter += 1
+            used_names.add(candidate)
+            dest = os.path.join(tmp_dir, candidate)
+            total = 0
+            try:
+                with urllib.request.urlopen(source, timeout=60) as resp, open(dest, 'wb') as out:
+                    while True:
+                        chunk = resp.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        total += len(chunk)
+                        if total > 50 * 1024 * 1024:
+                            raise ValidationError(f"media[{index}] exceeds the 50 MiB gallery cap")
+                        out.write(chunk)
+            except ValidationError:
+                raise
+            except Exception as exc:
+                raise ValidationError(f"media[{index}] could not be fetched: {exc}") from exc
+            paths.append(dest)
+
         if not paths:
-            raise ValidationError("No files provided for gallery publishing")
+            raise ValidationError("No files or media provided for gallery publishing")
 
         zip_path = os.path.join(tmp_dir, 'gallery.zip')
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -194,9 +243,9 @@ def _publish_rich_novel_worker(
     nodes and return ``{url, assets}``. Runs off the async event loop because
     publishing performs synchronous HTTP requests.
 
-    ``manifest`` is optional: ``[{"local": "<md rel path>", "source": "<Pixiv
-    CDN URL>"}]``. Sources that match the configured Pixiv proxy are rewritten
-    to proxy URLs instead of being uploaded to an image host.
+    ``manifest`` is optional: ``[{"local": "<md rel path>", "source": "<CDN
+    URL>"}]``. Sources whose host is in the configured media-proxy allowlist
+    are rewritten to proxy URLs instead of being uploaded to an image host.
     """
     tmp_dir = tempfile.mkdtemp(prefix='telepress-rich-')
     try:
@@ -285,12 +334,13 @@ async def publish_file(
 
 @app.post("/publish/gallery", response_model=GalleryPublishResponse, dependencies=_api_auth)
 async def publish_gallery(
-    files: List[UploadFile] = File(...),
+    files: Optional[List[UploadFile]] = File(None),
     title: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
     link: Optional[str] = Form(None),
     spoiler: Optional[str] = Form(None),
-    token: Optional[str] = Form(None)
+    token: Optional[str] = Form(None),
+    media: Optional[str] = Form(None)
 ):
     """
     Upload multiple image files and publish them as a Telegra.ph gallery.
@@ -303,10 +353,36 @@ async def publish_gallery(
 
     Compatible with generic multipart delivery clients (e.g. PixivFlow
     `httpMultipart` targets posting repeated `files` parts).
+
+    Optional remote media (opt-in, disabled by default): set
+    ``TELEPRESS_ALLOW_REMOTE_GALLERY_MEDIA=1`` and send a `media` JSON form
+    field with ``[{"assetId","kind","sourceUrl","filename"}]`` entries. When
+    present, TelePress fetches each https sourceUrl server-side (50 MiB cap)
+    instead of requiring uploaded bytes, then publishes the same gallery.
+    Clients that rely on this path are expected to be either loopback-only or
+    protected by the API key, since enabling it turns the endpoint into a
+    limited server-side fetch proxy.
     """
+    import json as _json
+    parsed_media = None
+    if media:
+        try:
+            parsed_media = _json.loads(media)
+            if not isinstance(parsed_media, list):
+                raise ValueError("media must be a JSON list")
+        except (ValueError, _json.JSONDecodeError) as exc:
+            raise HTTPException(status_code=400, detail=f"media 解析失败: {exc}")
+    if parsed_media and not _gallery_remote_media_enabled():
+        raise HTTPException(
+            status_code=400,
+            detail="remote gallery media is disabled; set TELEPRESS_ALLOW_REMOTE_GALLERY_MEDIA=1 to enable",
+        )
+    if not files and not parsed_media:
+        raise HTTPException(status_code=422, detail="Provide files or media")
     try:
         result = await run_in_threadpool(
-            _publish_gallery_worker, files, title, tags, link, spoiler, token
+            _publish_gallery_worker, files, title, tags, link, spoiler, token,
+            parsed_media or [],
         )
         return GalleryPublishResponse(
             url=result['url'], files=result['files']
@@ -335,9 +411,12 @@ async def publish_rich_novel(
     plus an ``assets`` map so the caller can see exactly which upload failed.
 
     ``manifest`` is optional JSON: ``[{"local": "images/001.jpg",
-    "source": "https://i.pximg.net/..."}]``. When ``TELEPRESS_PIXIV_PROXY_BASE``
-    is set, matching Pixiv sources are rewritten to the proxy and returned as
-    ``status: "proxied"``; anything else keeps the existing image-host fallback.
+    "source": "https://<cdn>/..."}]``. When a media proxy is configured
+    (``TELEPRESS_MEDIA_PROXY_BASE`` + ``TELEPRESS_MEDIA_PROXY_HOSTS``, or the
+    legacy ``TELEPRESS_PIXIV_PROXY_BASE`` alias), entries whose host is in the
+    allowlist are rewritten to the proxy and returned as ``status: "proxied"``;
+    anything else keeps the existing image-host fallback. This is a generic CDN
+    rewriter, not a Pixiv-only feature.
     """
     parsed_manifest = None
     if manifest:
