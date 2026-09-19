@@ -100,8 +100,8 @@ curl -X POST http://127.0.0.1:8000/publish/gallery \
   -F "files=@p0.jpg" \
   -F "files=@p1.jpg" \
   -F "title=Gallery title" \
-  -F "tags=pixiv, illustration" \
-  -F "link=https://www.pixiv.net/artworks/123456" \
+  -F "tags=artwork, illustration" \
+  -F "link=https://example.com/artworks/123456" \
   -F "spoiler=true"
 
 curl -X POST http://127.0.0.1:8000/publish/rich-novel \
@@ -112,13 +112,13 @@ curl -X POST http://127.0.0.1:8000/publish/rich-novel \
 ```
 
 `/publish/gallery` accepts repeated `files` parts plus optional `title`,
-`tags` (comma-separated), `link` (source URL) and `spoiler` (truthy for R-18
+`tags` (comma-separated), `link` (source URL) and `spoiler` (truthy for adult/nsfw
 content) form fields. Files are packed into a zip in upload order and
 published with automatic pagination and Prev/Next navigation; `tags`, `link`
-and the R-18 warning are rendered as a footer on the first page. It returns
+and the adult/nsfw warning are rendered as a footer on the first page. It returns
 `{"ok": true, "url": "...", "files": N}` and is compatible with generic
-multipart delivery clients, e.g. PixivFlow `httpMultipart` targets pointing
-at `http://<telepress-host>:8000/publish/gallery`.
+multipart delivery clients that post repeated `files` parts to
+`http://<telepress-host>:8000/publish/gallery`.
 
 `/publish/rich-novel` takes one `md` part, repeated `images` parts and an optional
 `title`. The markdown references local images with relative paths (e.g.
@@ -133,23 +133,23 @@ prevent publishing.
 An optional `manifest` form field accepts a JSON array, e.g.:
 
 ```json
-[{"local": "images/001.jpg", "source": "https://i.pximg.net/..."}]
+[{"local": "images/001.jpg", "source": "https://cdn.example.com/full/001.jpg"}]
 ```
 
 The proxy rewrite is **generic**, not Pixiv-specific:
 
 - `TELEPRESS_MEDIA_PROXY_BASE`: proxy entry base URL (e.g. your worker).
 - `TELEPRESS_MEDIA_PROXY_HOSTS`: comma-separated allowlist of upstream CDN
-  hosts (e.g. `i.pximg.net, i.etsystatic.com`). Only https entries whose host
+  hosts (e.g. `cdn-a.example.com, cdn-b.example.com`). Only https entries whose host
   is listed are rewritten; everything else keeps the image-host upload
   fallback, so this never becomes an open proxy/SSRF surface.
 - `TELEPRESS_MEDIA_PROXY_PATH_PREFIX`: optional route prefix, default `media`;
   rewrite result is `<base>/<prefix>/<host>/<path>`.
 
 Backwards compatibility: setting only the legacy `TELEPRESS_PIXIV_PROXY_BASE`
-keeps the old behavior (only `i.pximg.net`, `<base>/pixiv/<path>`). The proxy is
-expected to accept only `GET`/`HEAD` and pin its upstream inside your configured
-service.
+keeps the old behavior (`i.pximg.net` allowlist, `<base>/pixiv/<path>`) as a
+compatibility alias. The proxy is expected to accept only `GET`/`HEAD` and pin
+its upstream inside your configured service.
 
 Blocking file, compression, and network work is dispatched away from the API
 event loop, so concurrent requests do not serialize on those operations.

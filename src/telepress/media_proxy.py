@@ -1,8 +1,8 @@
 """Generic CDN media proxy rewrite (fixed-upstream allowlist, SSRF-safe).
 
 TelePress can rewrite rich-novel manifest ``source`` URLs to a user-supplied
-proxy base instead of uploading them to an image host. Unlike the old
-Pixiv-only feature, the proxy endpoint is described by the operator:
+proxy base instead of uploading them to an image host. The proxy endpoint is
+generic and described entirely by the operator:
 
 - ``TELEPRESS_MEDIA_PROXY_BASE``   proxy base URL, e.g. ``https://media.example.com``
 - ``TELEPRESS_MEDIA_PROXY_HOSTS``  comma-separated allowlist of upstream CDN hosts
@@ -13,7 +13,7 @@ Pixiv-only feature, the proxy endpoint is described by the operator:
 Rewritten URL is ``<base>/<prefix>/<host>/<path>`` for the generic config.
 
 Backwards compatibility: setting only the legacy ``TELEPRESS_PIXIV_PROXY_BASE``
-keeps the old Pixiv behavior — allowlist ``i.pximg.net`` and rewrite to
+keeps the original behavior — allowlist ``i.pximg.net`` and rewrite to
 ``<base>/pixiv/<path>``.
 
 No proxy base / no matching allowlist entry falls back to the normal
@@ -80,13 +80,13 @@ def allowed_hosts() -> Set[str]:
         if item:
             hosts.add(item)
     if not _generic_mode():
-        # Legacy TELEPRESS_PIXIV_PROXY_BASE keeps the old fixed Pixiv allowlist.
+        # Legacy TELEPRESS_PIXIV_PROXY_BASE keeps the original i.pximg.net allowlist.
         hosts.add(LEGACY_PIXIV_HOST)
     return hosts
 
 
 def path_prefix() -> str:
-    """Prefix used in the rewritten path (``pixiv`` in legacy mode)."""
+    """Prefix used in the rewritten path; ``pixiv`` for the legacy alias."""
     if not _generic_mode():
         return "pixiv"
     return os.getenv("TELEPRESS_MEDIA_PROXY_PATH_PREFIX", "media").strip().strip("/") or "media"
@@ -98,7 +98,7 @@ def proxy_url(source: str) -> Optional[str]:
     Only ``https`` URLs whose source host is in the configured allowlist are
     eligible; anything else returns ``None`` so the caller keeps the existing
     image-host fallback. Generic config rewrites to
-    ``<base>/<prefix>/<host>/<path>``; legacy Pixiv config rewrites to
+    ``<base>/<prefix>/<host>/<path>``; the legacy alias rewrites to
     ``<base>/pixiv/<path>``.
     """
     base = proxy_base()

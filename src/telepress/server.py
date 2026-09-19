@@ -104,14 +104,14 @@ def _build_gallery_footer(
     """
     Build the first-page footer nodes for a gallery from optional metadata.
     
-    Renders an R-18 warning when spoiler is truthy, a #tag paragraph, and a
+    Renders an adult/nsfw warning when spoiler is truthy, a #tag paragraph, and a
     source link paragraph. Returns [] when nothing is provided.
     """
     nodes: List[Dict] = []
     if spoiler and str(spoiler).strip().lower() in ('1', 'true', 'yes', 'on'):
         nodes.append({
             'tag': 'p',
-            'children': ['⚠️ Contains adult content (R-18) / 成人内容']
+            'children': ['⚠️ Contains adult content / 成人内容']
         })
     if tags:
         tag_list = [t.strip() for t in tags.split(',') if t.strip()]
@@ -347,12 +347,12 @@ async def publish_gallery(
 
     Files are packed into a zip in upload order and published with automatic
     pagination and Prev/Next navigation. The optional `tags` (comma-separated),
-    `link` (source URL) and `spoiler` (truthy for R-18 content) fields are
+    `link` (source URL) and `spoiler` (truthy, used to mark adult/nsfw content) fields are
     rendered as a footer on the first page. `title` defaults to the first
     file's name when omitted.
 
-    Compatible with generic multipart delivery clients (e.g. PixivFlow
-    `httpMultipart` targets posting repeated `files` parts).
+    Compatible with generic multipart delivery clients that post repeated
+    `files` parts to this endpoint.
 
     Optional remote media (opt-in, disabled by default): set
     ``TELEPRESS_ALLOW_REMOTE_GALLERY_MEDIA=1`` and send a `media` JSON form

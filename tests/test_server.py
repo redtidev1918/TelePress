@@ -295,7 +295,7 @@ class TestGalleryEndpoint(unittest.TestCase):
         footer = call_args[1]['footer_nodes']
         self.assertEqual(len(footer), 3)
         # spoiler note
-        self.assertIn('R-18', footer[0]['children'][0])
+        self.assertIn('adult content', footer[0]['children'][0])
         # tags paragraph
         self.assertIn('# pixiv', footer[1]['children'][0])
         # source link paragraph
@@ -462,7 +462,7 @@ class TestGalleryFooterBuilder(unittest.TestCase):
             spoiler="true",
         )
         self.assertEqual(len(nodes), 3)
-        self.assertIn('R-18', nodes[0]['children'][0])
+        self.assertIn('adult content', nodes[0]['children'][0])
         self.assertEqual(nodes[1]['children'][0], '# pixiv #illustration')
         self.assertEqual(nodes[2]['children'][1]['attrs']['href'],
                          'https://www.pixiv.net/artworks/1')
