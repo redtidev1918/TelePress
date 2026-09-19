@@ -65,6 +65,7 @@ class RichNovelAsset(BaseModel):
     local: str
     remote: Optional[str] = None
     status: str = "uploaded"
+    assetId: Optional[str] = None
 
 class RichNovelResponse(BaseModel):
     url: str
