@@ -5,9 +5,10 @@
 * `pixivflow-telepost-deploy/AGENTS.md`（PixivFlow Ecosystem Agent Operating Contract）
 * `pixivflow-telepost-deploy/docs/architecture/ecosystem-platform.md`（长期架构）
 * `pixivflow-telepost-deploy/docs/operations/current-state.md`（当前生产状态）
+* `pixivflow-telepost-deploy/CONTRACT.md`（生效生产合同）
 
 本文件只保留本仓边界与特殊约束。本仓职责：telepress 负责把已经过审的内容
-发布为富媒体（Markdown / 图片 / Tealegraph preview / Catbox），并通过 `/publish/rich-novel` 返回
+发布为富媒体（Markdown / 图片 / Telegraph preview / Catbox），并通过 `/publish/rich-novel` 返回
 `{url, assets[]}` 供 PixivFlow 注入 novel_preview_url。
 
 ## 一句话
