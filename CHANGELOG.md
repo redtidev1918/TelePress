@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.14.0](https://github.com/redtidev1918/telepress/compare/v0.13.1...v0.14.0) (2026-09-19)
+
+
+### Features
+
+* **api:** decouple media proxy from Pixiv, opt-in remote gallery media ([#47](https://github.com/redtidev1918/telepress/issues/47)) ([f6a6a51](https://github.com/redtidev1918/telepress/commit/f6a6a51aec665bd9e9baef355fba59d6e9da9c58))
+
 ## [0.13.1](https://github.com/redtidev1918/telepress/compare/v0.13.0...v0.13.1) (2026-09-19)
 
 
