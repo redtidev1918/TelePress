@@ -27,6 +27,11 @@ Telegraph，然后返回可公开预览 URL。
   moderation、不改业务状态。
 - **异常要解释**：失败必须返回结构化错误（stage / code / reason），不得只回通用 500；
   让上游能按 `telepress_publish` stage 归因。
+- **Pixiv 媒体代理优先、图床 fallback**：`/publish/rich-novel` 可接收
+  `manifest`（`[{"local", "source"}]`）；当配置 `TELEPRESS_PIXIV_PROXY_BASE` 且
+  `source` 是 `https://i.pximg.net/...` 时改写为 `<base>/pixiv/...` 并返回
+  `status=proxied`。没有 proxy / 不匹配时继续走现有 ImageHost 上传，绝不把任意
+  URL 当作可代理上游（固定 `i.pximg.net`，Worker 只允许 GET/HEAD）。
 - **保持旧 TXT 兼容**：富媒体是增量能力；不能摧毁已存在的纯文本发布路径。
 
 ## 改完请自证

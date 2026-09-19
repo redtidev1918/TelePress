@@ -121,8 +121,20 @@ curl -X POST http://127.0.0.1:8000/publish/rich-novel \
 `images` 的 multipart 文件名必须与引用路径一致（例如 `images/001.jpg`）。图片
 会先上传到配置的图床（如 Catbox），引用改写成远端 URL 后按源顺序渲染成
 Telegraph 节点并发布。返回 `{"url": "...", "assets": [{"local", "remote",
-"status"}], ...}`，`assets` 里每个本地图都能看到 `uploaded` / `failed`，失败
-不致命、页面仍会发布。
+"status"}], ...}`，`assets` 里每个本地图都能看到 `uploaded` / `failed` / `proxied`，
+失败不致命、页面仍会发布。
+
+可选 `manifest` 字段是一个 JSON 数组，例如：
+
+```json
+[{"local": "images/001.jpg", "source": "https://i.pximg.net/..."}]
+```
+
+当设置 `TELEPRESS_PIXIV_PROXY_BASE`（指向固定 `i.pximg.net` 上游的 Cloudflare
+Worker）时，`source` 是 Pixiv CDN 图片的条目会被改写成
+`<base>/pixiv/...` 并直接使用，asset 状态为 `proxied`；没有 proxy、或 `source`
+不是 Pixiv CDN 时，继续走现有图床上传作为 fallback。Worker 只接受
+`GET/HEAD`、上游固定在 `i.pximg.net`，不会成为开放代理。
 
 文件读写、图片压缩和同步网络请求会在线程池执行，不会阻塞 API 的异步事件循环。
 

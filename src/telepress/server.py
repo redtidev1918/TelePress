@@ -185,12 +185,17 @@ def _publish_rich_novel_worker(
     md_file,
     image_files,
     title: Optional[str],
-    token: Optional[str]
+    token: Optional[str],
+    manifest: Optional[list] = None,
 ) -> Dict:
     """
     Save an uploaded markdown + image set, upload the images, render Telegraph
     nodes and return ``{url, assets}``. Runs off the async event loop because
     publishing performs synchronous HTTP requests.
+
+    ``manifest`` is optional: ``[{"local": "<md rel path>", "source": "<Pixiv
+    CDN URL>"}]``. Sources that match the configured Pixiv proxy are rewritten
+    to proxy URLs instead of being uploaded to an image host.
     """
     tmp_dir = tempfile.mkdtemp(prefix='telepress-rich-')
     try:
@@ -210,7 +215,9 @@ def _publish_rich_novel_worker(
                 shutil.copyfileobj(upload.file, out)
 
         publisher = get_publisher(token)
-        return publisher.publish_rich_markdown(md_path, title=title or 'Novel')
+        return publisher.publish_rich_markdown(
+            md_path, title=title or 'Novel', manifest=manifest
+        )
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -313,7 +320,8 @@ async def publish_rich_novel(
     md: UploadFile = File(...),
     images: Optional[List[UploadFile]] = File(None),
     title: Optional[str] = Form(None),
-    token: Optional[str] = Form(None)
+    token: Optional[str] = Form(None),
+    manifest: Optional[str] = Form(None)
 ):
     """
     Publish a rich novel (markdown + local images) to Telegraph.
@@ -324,10 +332,25 @@ async def publish_rich_novel(
     host (Catbox), refs are rewritten to remote URLs, Telegraph nodes are
     rendered in source order and the page is published. Returns the page URL
     plus an ``assets`` map so the caller can see exactly which upload failed.
+
+    ``manifest`` is optional JSON: ``[{"local": "images/001.jpg",
+    "source": "https://i.pximg.net/..."}]``. When ``TELEPRESS_PIXIV_PROXY_BASE``
+    is set, matching Pixiv sources are rewritten to the proxy and returned as
+    ``status: "proxied"``; anything else keeps the existing image-host fallback.
     """
+    parsed_manifest = None
+    if manifest:
+        import json as _json
+        try:
+            parsed_manifest = _json.loads(manifest)
+            if not isinstance(parsed_manifest, list):
+                raise ValueError("manifest must be a JSON list")
+        except (ValueError, _json.JSONDecodeError) as exc:
+            raise HTTPException(status_code=400, detail=f"manifest 解析失败: {exc}")
     try:
         result = await run_in_threadpool(
-            _publish_rich_novel_worker, md, images or [], title, token
+            _publish_rich_novel_worker, md, images or [], title, token,
+            parsed_manifest,
         )
         return RichNovelResponse(url=result['url'], assets=result.get('assets', []))
     except TelePressError as e:

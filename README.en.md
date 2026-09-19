@@ -127,7 +127,21 @@ at `http://<telepress-host>:8000/publish/gallery`.
 Catbox), refs are rewritten to remote URLs and rendered as inline Telegraph
 nodes in source order. It returns
 `{"url": "...", "assets": [{"local", "remote", "status"}]}` where each local
-asset reports `uploaded` / `failed`; a failed asset does not prevent publishing.
+asset reports `uploaded` / `failed` / `proxied`; a failed asset does not
+prevent publishing.
+
+An optional `manifest` form field accepts a JSON array, e.g.:
+
+```json
+[{"local": "images/001.jpg", "source": "https://i.pximg.net/..."}]
+```
+
+When `TELEPRESS_PIXIV_PROXY_BASE` is set (a Cloudflare Worker proxying the
+fixed `i.pximg.net` upstream), entries whose `source` is a Pixiv CDN URL are
+rewritten to `<base>/pixiv/...` and used directly (`status: "proxied"`); without
+a proxy, or when `source` is not a Pixiv CDN URL, the existing image-host
+upload remains the fallback. The Worker only accepts `GET`/`HEAD`, pins the
+upstream to `i.pximg.net`, and is not an open proxy.
 
 Blocking file, compression, and network work is dispatched away from the API
 event loop, so concurrent requests do not serialize on those operations.

@@ -1272,6 +1272,38 @@ class TestPublishMarkdownRichMedia(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.publisher.publish_markdown(path, title="telegraph失败")
 
+    def test_publish_rich_markdown_proxy_manifest(self):
+        """Manifest-mapped Pixiv sources are rewritten to the proxy, not uploaded."""
+        md = "开场白\n\n![插图](images/001.jpg)\n\n结尾"
+        path = self._write_md(md)
+        manifest = [{
+            "local": "images/001.jpg",
+            "source": "https://i.pximg.net/img-master/img/1_p0.jpg",
+        }]
+        with patch.dict(
+            "telepress.pixiv_proxy.os.environ",
+            {"TELEPRESS_PIXIV_PROXY_BASE": "https://media.example.com"},
+        ):
+            self.mock_client.create_page.return_value = {
+                "url": "http://telegra.ph/rich", "path": "rich",
+            }
+            result = self.publisher.publish_rich_markdown(
+                path, title="富媒体", manifest=manifest,
+            )
+
+        self.assertEqual(result["url"], "http://telegra.ph/rich")
+        self.assertEqual(len(result["assets"]), 1)
+        self.assertEqual(result["assets"][0]["local"], "images/001.jpg")
+        self.assertEqual(result["assets"][0]["status"], "proxied")
+        self.assertEqual(
+            result["assets"][0]["remote"],
+            "https://media.example.com/pixiv/img-master/img/1_p0.jpg",
+        )
+        self.publisher.uploader.upload_batch.assert_not_called()
+        content = self.mock_client.create_page.call_args.kwargs["content"]
+        blob = json.dumps(content)
+        self.assertIn("https://media.example.com/pixiv/img-master/img/1_p0.jpg", blob)
+
     def test_publish_rich_markdown_returns_assets(self):
         """Rich publish returns {url, assets} with the uploaded mapping."""
         md = "开场白\n\n![插图](images/001.jpg)\n\n结尾"
