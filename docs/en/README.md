@@ -1,23 +1,32 @@
 # TelePress Documentation
 
-**Language / 语言:** [中文](/) · English
+**Language / 语言:** English · [中文](../README.md)
 
-> TelePress publishes Markdown, plain text, images and ZIP galleries to
-> [Telegraph](https://telegra.ph), with automatic pagination, external image hosts, image
-> compression, concurrent uploads and an optional REST API.
+TelePress turns content into Telegraph pages. `docs/` is the authoritative home
+for stable contracts; the root README only carries the product pitch and quick
+start.
 
-## Entry points
+## Reading paths
+
+Users: [Getting Started](getting-started.md) → [Configuration](configuration.md) →
+[CLI](cli.md) / [Python API](python-api.md)
+
+API users: [REST API](api/README.md) → endpoint contract → [Media](media/README.md)
+
+Maintainers / agents: [Architecture](architecture/README.md) →
+[Releasing](development/releasing.md) → [Current state](operations/current-state.md)
+
+## Index
 
 | Document | Content |
-| :-- | :-- |
-| [📥 Download](download.md) | PyPI install, source install and release artifacts |
-| [README (English)](/README.en.md) | Requirements, installation, quick start, REST API, image hosts, Python API, error handling |
-| [Release process](RELEASING.md) | How releases are cut and published |
-| [Changelog](/CHANGELOG.md) | Released changes |
-| [中文文档](/) | Chinese documentation (default language) |
-
-## Links
-
-- PyPI: <https://pypi.org/project/telepress/>
-- Repository: <https://github.com/redtidev1918/telepress>
-- Releases: <https://github.com/redtidev1918/telepress/releases>
+| --- | --- |
+| [getting-started.md](getting-started.md) | Install, requirements, 30-second run |
+| [configuration.md](configuration.md) | Config precedence and environment variables |
+| [cli.md](cli.md) | CLI commands |
+| [python-api.md](python-api.md) | Python API and error handling |
+| [api/](api/README.md) | REST API contracts |
+| [media/](media/README.md) | MediaReference, proxy, hosts |
+| [architecture/](architecture/README.md) | Architecture overview and publishing plane |
+| [operations/](operations/README.md) | Deployment, security, current state |
+| [development/](development/README.md) | Testing and releasing |
+| [download.md](download.md) | Generated download page |

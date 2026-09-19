@@ -4,53 +4,50 @@
 [![PyPI](https://img.shields.io/pypi/v/telepress.svg)](https://pypi.org/project/telepress/)
 [![Python](https://img.shields.io/pypi/pyversions/telepress.svg)](https://pypi.org/project/telepress/)
 
-**Language / 语言:** [中文](README.md) · English
+**Language / 语言:** English · [中文](README.md)
 
-TelePress publishes Markdown, plain text, images, and ZIP galleries to
-[Telegraph](https://telegra.ph). It supports automatic pagination, external
-image hosts, image compression, concurrent uploads, and an optional REST API.
+TelePress is a publishing plane: it turns Markdown, plain text, images and rich
+media into Telegraph pages, regardless of which platform the content came from.
 
-## Requirements
+- Plain text / Markdown: automatic pagination with Prev / Next navigation
+- Images / ZIP galleries: compressed and published as a Telegra.ph album
+- Rich media (REST): publish Markdown + local images via `/publish/rich-novel`
+- Images can be resolved through an **upload host** or a **generic CDN proxy**
 
-- Python 3.10 or newer
-- A Telegraph token, or permission to create one on first use
-- An image-host configuration only when publishing images or galleries
+The homepage answers five things:
 
-## Installation
+1. What it is: [positioning](/docs/en/architecture/publishing-plane.md)
+2. What it is for: turning existing content into public Telegraph preview URLs
+3. How to install: `pip install telepress`
+4. 30-second run: `telepress article.md --title "Example"`
+5. Where to continue: [documentation index](/docs/en/README.md)
+
+## Install
 
 ```bash
 pip install telepress
 
-# Optional REST API
+# Optional: REST API server
 pip install "telepress[api]"
 
-# Optional S3-compatible hosts such as AWS S3 and Cloudflare R2
+# Optional: S3 / R2 / OSS / MinIO compatible hosts
 pip install "telepress[s3]"
 
-# Optional YAML configuration files
+# Optional: YAML config
 pip install "telepress[yaml]"
 ```
 
-Install from source for development:
+## 30-second quick start
 
 ```bash
-git clone https://github.com/redtidev1918/telepress.git
-cd telepress
-python -m pip install --editable ".[dev]"
+pip install telepress
+telepress article.md --title "My article"
+
+# Or the explicit subcommand
+telepress publish article.md --title "My article"
 ```
 
-## Quick start
-
-Publish a document:
-
-```bash
-telepress article.md --title "My post"
-
-# The explicit subcommand is equivalent
-telepress publish article.md --title "My post"
-```
-
-Publish an image or ZIP gallery after configuring an image host:
+Before publishing images / ZIP galleries, configure one image host:
 
 ```bash
 telepress configure
@@ -59,282 +56,27 @@ telepress photo.jpg --title "Photo"
 telepress gallery.zip --title "Gallery"
 ```
 
-Useful publishing options:
+To run the server:
 
 ```bash
-# Override the configured image limit in MiB
-telepress gallery.zip --image-size-limit 10
-
-# Keep original images instead of compressing oversized files
-telepress gallery.zip --no-compress
-
-# Use a Telegraph-compatible API endpoint
-telepress article.md --api-url http://localhost:9009
-```
-
-Text-only publishing does not load or require an image-host configuration.
-The Telegraph access token is created automatically when needed and stored in
-`~/.telegraph_token` unless one is supplied with `--token`.
-
-## REST API
-
-Install the optional API dependencies first: `pip install "telepress[api]"`.
-
-```bash
+pip install "telepress[api]"
 telepress-server --host 127.0.0.1 --port 8000
+# Interactive OpenAPI docs: http://127.0.0.1:8000/docs
 ```
 
-Interactive OpenAPI documentation is available at
-`http://127.0.0.1:8000/docs`.
+On first use TelePress creates and stores a Telegraph token automatically
+(`~/.telegraph_token` by default).
 
-```bash
-curl -X POST http://127.0.0.1:8000/publish/text \
-  -H "Content-Type: application/json" \
-  -d '{"content":"# Title\n\nBody","title":"Example"}'
+## Documentation
 
-curl -X POST http://127.0.0.1:8000/publish/file \
-  -F "file=@article.md" \
-  -F "title=Example"
+The README is not a full manual; the stable contracts live under `docs/`:
 
-curl -X POST http://127.0.0.1:8000/publish/gallery \
-  -F "files=@p0.jpg" \
-  -F "files=@p1.jpg" \
-  -F "title=Gallery title" \
-  -F "tags=artwork, illustration" \
-  -F "link=https://example.com/artworks/123456" \
-  -F "spoiler=true"
-
-curl -X POST http://127.0.0.1:8000/publish/rich-novel \
-  -F "md=@novel.md" \
-  -F "images=@images/001.jpg" \
-  -F "images=@images/002.jpg" \
-  -F "title=Rich Novel"
-```
-
-`/publish/gallery` accepts repeated `files` parts plus optional `title`,
-`tags` (comma-separated), `link` (source URL) and `spoiler` (truthy for adult/nsfw
-content) form fields. Files are packed into a zip in upload order and
-published with automatic pagination and Prev/Next navigation; `tags`, `link`
-and the adult/nsfw warning are rendered as a footer on the first page. It returns
-`{"ok": true, "url": "...", "files": N}` and is compatible with generic
-multipart delivery clients that post repeated `files` parts to
-`http://<telepress-host>:8000/publish/gallery`.
-
-`/publish/rich-novel` takes one `md` part, repeated `images` parts and an optional
-`title`. The markdown references local images with relative paths (e.g.
-`![](images/001.jpg)`); each image multipart name must match the reference path
-(e.g. `images/001.jpg`). Images are uploaded to the configured host (e.g.
-Catbox), refs are rewritten to remote URLs and rendered as inline Telegraph
-nodes in source order. It returns
-`{"url": "...", "assets": [{"local", "remote", "status"}]}` where each local
-asset reports `uploaded` / `failed` / `proxied`; a failed asset does not
-prevent publishing.
-
-An optional `manifest` form field accepts a JSON array, e.g.:
-
-```json
-[{"local": "images/001.jpg", "source": "https://cdn.example.com/full/001.jpg"}]
-```
-
-The proxy rewrite is **generic**, not Pixiv-specific:
-
-- `TELEPRESS_MEDIA_PROXY_BASE`: proxy entry base URL (e.g. your worker).
-- `TELEPRESS_MEDIA_PROXY_HOSTS`: comma-separated allowlist of upstream CDN
-  hosts (e.g. `cdn-a.example.com, cdn-b.example.com`). Only https entries whose host
-  is listed are rewritten; everything else keeps the image-host upload
-  fallback, so this never becomes an open proxy/SSRF surface.
-- `TELEPRESS_MEDIA_PROXY_PATH_PREFIX`: optional route prefix, default `media`;
-  rewrite result is `<base>/<prefix>/<host>/<path>`.
-
-Backwards compatibility: setting only the legacy `TELEPRESS_PIXIV_PROXY_BASE`
-keeps the old behavior (`i.pximg.net` allowlist, `<base>/pixiv/<path>`) as a
-compatibility alias. The proxy is expected to accept only `GET`/`HEAD` and pin
-its upstream inside your configured service.
-
-Blocking file, compression, and network work is dispatched away from the API
-event loop, so concurrent requests do not serialize on those operations.
-
-## Image hosts
-
-Supported hosts:
-
-- ImgBB, Imgur, sm.ms, Freeimage.host (images)
-- ImageKit, Cloudinary (images/CDN)
-- Catbox (anonymous or userhash, arbitrary files)
-- Uploadcare (public key, arbitrary files, CDN)
-- 0x0.st, Litterbox (anonymous temporary files with explicit expiry)
-- S3-compatible storage, including AWS S3, Cloudflare R2, OSS, and MinIO
-- Rclone remotes
-- Custom HTTP upload APIs
-
-Run `telepress configure` for the interactive setup, or create
-`~/.telepress.json`:
-
-```json
-{
-  "image_host": {
-    "type": "rclone",
-    "remote_path": "myremote:bucket/path",
-    "public_url": "https://cdn.example.com/path",
-    "rclone_flags": ["--transfers=32", "--checkers=32"],
-    "max_size_mb": 20,
-    "max_workers": 8
-  }
-}
-```
-
-S3-compatible configuration:
-
-```json
-{
-  "image_host": {
-    "type": "s3",
-    "access_key_id": "your-access-key",
-    "secret_access_key": "your-secret-key",
-    "bucket": "your-bucket",
-    "public_url": "https://cdn.example.com",
-    "endpoint_url": "https://s3.example.com",
-    "region_name": "auto"
-  }
-}
-```
-
-Catbox configuration (anonymous upload works without `userhash`):
-
-```bash
-# Anonymous upload
-export TELEPRESS_IMAGE_HOST_TYPE=catbox
-
-# Use your account userhash (to manage/anonymize files)
-export TELEPRESS_IMAGE_HOST_TYPE=catbox
-export TELEPRESS_IMAGE_HOST_USERHASH=YOUR_USERHASH
-```
-
-```json
-{
-  "image_host": {
-    "type": "catbox",
-    "userhash": "YOUR_USERHASH"
-  }
-}
-```
-
-Catbox does not recompress files itself. When uploading images through
-`ImageUploader`, TelePress still compresses over `max_size` first; calling
-`CatboxHost.upload(path)` directly uploads the file as-is (ZIP, TXT and
-other plain files are accepted). Anonymous uploads are not tied to an account
-and cannot be managed or deleted from Catbox's web interface, so do not use
-them for long-term storage of important files.
-
-Other providers (all use the generic `TELEPRESS_IMAGE_HOST_*` mapping):
-
-```bash
-# Freeimage.host
-export TELEPRESS_IMAGE_HOST_TYPE=freeimage
-export TELEPRESS_IMAGE_HOST_API_KEY=YOUR_KEY
-
-# Uploadcare
-export TELEPRESS_IMAGE_HOST_TYPE=uploadcare
-export TELEPRESS_IMAGE_HOST_PUBLIC_KEY=YOUR_PUBLIC_KEY
-
-# ImageKit
-export TELEPRESS_IMAGE_HOST_TYPE=imagekit
-export TELEPRESS_IMAGE_HOST_PRIVATE_KEY=YOUR_PRIVATE_KEY
-
-# Cloudinary (unsigned preset)
-export TELEPRESS_IMAGE_HOST_TYPE=cloudinary
-export TELEPRESS_IMAGE_HOST_CLOUD_NAME=your-cloud
-export TELEPRESS_IMAGE_HOST_UPLOAD_PRESET=your-preset
-
-# Temporary anonymous file hosting
-export TELEPRESS_IMAGE_HOST_TYPE=0x0
-export TELEPRESS_IMAGE_HOST_TYPE=litterbox
-export TELEPRESS_IMAGE_HOST_EXPIRATION=24h
-```
-
-0x0.st and Litterbox are anonymous temporary file hosts: files expire
-automatically and are not suitable as permanent article images. Verify each
-provider's current size, retention and hotlink policies before relying on it.
-
-Environment variables override file configuration:
-
-```bash
-export TELEPRESS_IMAGE_HOST_TYPE=imgbb
-export TELEPRESS_IMAGE_HOST_API_KEY=your-key
-```
-
-Configuration is searched in the following locations:
-
-1. The path passed to `load_config()`
-2. `TELEPRESS_CONFIG`
-3. `~/.telepress.json`, `~/.telepress.yaml`, `~/.telepress.yml`
-4. `~/.config/telepress.json`
-
-## Python API
-
-```python
-from telepress import TelegraphPublisher, publish, publish_text
-
-url = publish("article.md", title="My article")
-text_url = publish_text("# Hello\n\nWorld", title="Hello")
-
-publisher = TelegraphPublisher(image_size_limit=10)
-gallery_url = publisher.publish("gallery.zip", title="Gallery")
-```
-
-Upload images directly:
-
-```python
-from telepress import ImageUploader
-
-uploader = ImageUploader("imgbb", api_key="your-key")
-url = uploader.upload("photo.jpg")
-
-batch = uploader.upload_batch(["1.jpg", "2.jpg"])
-print(batch.success_rate, batch.get_url_map())
-```
-
-## Behavior and limits
-
-- Markdown and plain text are converted to Telegraph DOM nodes.
-- Plain text chapter headings such as `Chapter 1` and `第一章` are detected.
-- Large text is split near 10,000-character boundaries and linked with
-  previous/next navigation.
-- Galleries are split at 100 images per page.
-- Images larger than 5 MiB are compressed by default; GIF compression is
-  intentionally skipped.
-- A 2 GiB input safety limit is applied before processing.
-- Duplicate text publications are cached in `~/.telepress_cache.json` by
-  default.
-
-Supported input extensions include `.txt`, `.md`, `.markdown`, `.rst`,
-`.text`, `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.bmp`, and `.zip`.
-
-## Error handling
-
-```python
-from telepress import TelePressError, ValidationError, publish
-
-try:
-    url = publish("article.md")
-except ValidationError as exc:
-    print(f"Invalid input: {exc}")
-except TelePressError as exc:
-    print(f"Publishing failed: {exc}")
-```
-
-## Development and releases
-
-```bash
-python -m pip install --editable ".[dev]"
-python -m pytest --cov
-python -m build
-python -m twine check dist/*
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution conventions and
-[docs/en/RELEASING.md](docs/en/RELEASING.md) for the automated release workflow.
-Notable changes are recorded in [CHANGELOG.md](CHANGELOG.md).
+- Getting started / config: [getting-started.md](/docs/en/getting-started.md) · [configuration.md](/docs/en/configuration.md)
+- REST API: [docs/en/api/README.md](/docs/en/api/README.md)
+- Media: [docs/en/media/README.md](/docs/en/media/README.md)
+- Python API / CLI: [python-api.md](/docs/en/python-api.md) · [cli.md](/docs/en/cli.md)
+- Architecture: [publishing-plane.md](/docs/en/architecture/publishing-plane.md)
+- Operations / current state: [current-state.md](/docs/en/operations/current-state.md)
 
 ## License
 

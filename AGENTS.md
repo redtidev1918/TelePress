@@ -1,41 +1,52 @@
-# AGENTS.md —— telepress 是「发布平面」
+# AGENTS.md — telepress 是「发布平面」
 
-写给任何进入本仓库的智能体或工程师。跨仓库的职责与执行纪律的唯一权威在：
-
-* `pixivflow-telepost-deploy/AGENTS.md`（PixivFlow Ecosystem Agent Operating Contract）
-* `pixivflow-telepost-deploy/docs/architecture/ecosystem-platform.md`（长期架构）
-* `pixivflow-telepost-deploy/docs/operations/current-state.md`（当前生产状态）
-* `pixivflow-telepost-deploy/CONTRACT.md`（生效生产合同）
-
-本文件只保留本仓边界与特殊约束。本仓职责：telepress 负责把已经过审的内容
-发布为富媒体（Markdown / 图片 / Telegraph preview / Catbox），并通过 `/publish/rich-novel` 返回
-`{url, assets[]}` 供 PixivFlow 注入 novel_preview_url。
+给进入本仓库的智能体/工程师的长期不变量。本文件不描述某一具体图床、某个上游平台
+或某个临时 Worker URL，只记录 TelePress 作为通用发布平面的稳定边界。
 
 ## 一句话
 
-Publishing Plane。它**不持有** Pixiv 凭据、Telegram bot token、channel id 或
-TelePost submit token；它只从请求拿到已审核内容与图片，把它们安全地上传到 Catbox /
-Telegraph，然后返回可公开预览 URL。
+TelePress = **Preview / Publishing Plane**。它把请求里的内容与媒体引用转换成可公开
+预览的 Telegraph URL，并返回结构化结果给调用方。
 
-## 硬约束
+## 必须保持
 
-- **无状态**：不上传不写库（除必要缓存外）；每次 `/publish/rich-novel` 是独立请求，
-  幂等可重试，不得依赖同一个服务进程的内存状态。
-- **凭据隔离**：只使用自己的 `TELEGRAPH_ACCESS_TOKEN` / `TELEPRESS_API_KEY`
-  （运行时 secret，绝不提交仓库）。禁止把上游传过来的任何凭据转发到第三方。
-- **内容边界**：只发布 PixivFlow/TelePost 送来的已审核内容；不做审核判断、不做
-  moderation、不改业务状态。
-- **异常要解释**：失败必须返回结构化错误（stage / code / reason），不得只回通用 500；
-  让上游能按 `telepress_publish` stage 归因。
-- **Pixiv 媒体代理优先、图床 fallback**：`/publish/rich-novel` 可接收
-  `manifest`（`[{"local", "source"}]`）；当配置 `TELEPRESS_PIXIV_PROXY_BASE` 且
-  `source` 是 `https://i.pximg.net/...` 时改写为 `<base>/pixiv/...` 并返回
-  `status=proxied`。没有 proxy / 不匹配时继续走现有 ImageHost 上传，绝不把任意
-  URL 当作可代理上游（固定 `i.pximg.net`，Worker 只允许 GET/HEAD）。
-- **保持旧 TXT 兼容**：富媒体是增量能力；不能摧毁已存在的纯文本发布路径。
+- **无状态（stateless-ish）**：除必要缓存外不写库；单次发布是独立、可重试请求，不得依赖服务进程内存状态。
+- **平台中立（provider neutral）**：不持有 Pixiv / DeviantArt 等源站平台账号凭据。
+- **源平台中立（source-platform neutral）**：内容来源与 TelePress 发布能力无关。
+- **不持有上游业务状态**：不做审核、不做 moderation、不作调度器、不是 Telegram Bot。
+- **结构化失败**：错误必须带上 stage / code / reason，便于调用方归因（例如 `/publish/rich-novel` 的 `assets[].status`）。
+- **向后兼容**：不能因为新增富媒体能力而摧毁已存在的纯文本 / 文件 / multipart 图集发布路径。
+
+## 媒体
+
+`MediaReference` 是媒体解析的统一入口：
+
+```text
+MediaReference
+      │
+      ├── Proxy path
+      │     TELEPRESS_MEDIA_PROXY_*（显式 host allowlist 命中时）
+      │
+      └── Upload path
+            ImageUploader / ImageHost（fallback 或未启用 proxy）
+```
+
+规则：
+
+- 命中的 `https` 且 host 在允许列表内 → 走 proxy，状态 `proxied`；
+- 其他场景 → 走图床上传，失败状态 `failed`；
+- 代理必须是「固定上游、仅 https、只改写 allowlist host」的受限代理，绝不能变成开放代理或任意 URL SSRF。
+
+## 不要
+
+- 给 Pixiv / DeviantArt 等具体来源写特殊核心模型；
+- 把某个图床（例如 Catbox）当成架构本身；
+- 建立业务数据库；
+- 接管上游平台凭据；
+- 新建平行 Renderer / Publisher / Media Resolver pipeline（新的发布路径必须复用现有管道）。
 
 ## 改完请自证
 
-- 本地测试（pytest 或仓库既有 runner）全绿；样例请求（含真实或 mock 图片）能跑通
-  `/publish/rich-novel`。
-- 缺失/占位 secret 时必须显式 SKIP 或 FAIL，禁止静默绕过鉴权。
+- 本地测试全绿：`python -m pytest --cov`
+- 样例请求能跑通受影响路径（至少含 `/publish/*` 或 CLI 发布）
+- 缺失/占位 secret 时必须显式 SKIP 或 FAIL，禁止静默绕过鉴权
