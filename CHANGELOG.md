@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.13.1](https://github.com/redtidev1918/telepress/compare/v0.13.0...v0.13.1) (2026-09-19)
+
+
+### Reverts
+
+* **publish:** drop remote MediaReference fetch for /publish/gallery ([#45](https://github.com/redtidev1918/telepress/issues/45)) ([f8ac147](https://github.com/redtidev1918/telepress/commit/f8ac147ec1c5f8b86f63be23de89a1f2078d86ae))
+
 ## [0.13.0](https://github.com/redtidev1918/telepress/compare/v0.12.1...v0.13.0) (2026-09-19)
 
 
