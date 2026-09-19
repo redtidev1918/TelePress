@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.13.0](https://github.com/redtidev1918/telepress/compare/v0.12.1...v0.13.0) (2026-09-19)
+
+
+### Features
+
+* **publish:** accept remote MediaReference[] manifest for gallery ([#42](https://github.com/redtidev1918/telepress/issues/42)) ([e93cf77](https://github.com/redtidev1918/telepress/commit/e93cf772aa98e10972fcca4163db43ddb7ad8624))
+
 ## [0.12.1](https://github.com/redtidev1918/telepress/compare/v0.12.0...v0.12.1) (2026-09-19)
 
 
