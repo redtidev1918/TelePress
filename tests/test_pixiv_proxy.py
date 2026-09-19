@@ -1,7 +1,31 @@
 from unittest import TestCase
 from unittest.mock import patch
 
-from telepress.pixiv_proxy import pixiv_proxy_url
+from telepress.pixiv_proxy import pixiv_proxy_url, reference_from_entry
+
+
+class TestReferenceFromEntry(TestCase):
+    def test_accepts_new_sourceUrl_and_assetId_shape(self):
+        ref = reference_from_entry({
+            "local": "images/001.jpg",
+            "assetId": "pixiv:123:pixivimage:p0",
+            "sourceUrl": "https://i.pximg.net/img-master/img/1_p0.jpg",
+        })
+        self.assertEqual(ref.local_ref, "images/001.jpg")
+        self.assertEqual(ref.asset_id, "pixiv:123:pixivimage:p0")
+        self.assertEqual(ref.source_url, "https://i.pximg.net/img-master/img/1_p0.jpg")
+
+    def test_falls_back_to_legacy_local_and_source(self):
+        ref = reference_from_entry({
+            "local": "images/001.jpg",
+            "source": "https://i.pximg.net/x.jpg",
+        })
+        self.assertEqual(ref.local_ref, "images/001.jpg")
+        self.assertEqual(ref.source_url, "https://i.pximg.net/x.jpg")
+        self.assertIsNone(ref.asset_id)
+
+    def test_requires_local_ref(self):
+        self.assertIsNone(reference_from_entry({"source": "https://i.pximg.net/x.jpg"}))
 
 
 class TestPixivProxyUrl(TestCase):

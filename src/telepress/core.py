@@ -16,7 +16,7 @@ from .auth import TelegraphAuth
 from .config import load_config
 from .converter import NovelMarkdownRenderer
 from .uploader import ImageUploader
-from .pixiv_proxy import pixiv_proxy_url
+from .pixiv_proxy import pixiv_proxy_url, reference_from_entry
 from .utils import (
     natural_sort_key, safe_extract_zip, validate_file_size,
     MAX_TEXT_SIZE, MAX_IMAGES_PER_PAGE, MAX_IMAGE_SIZE,
@@ -486,16 +486,13 @@ class TelegraphPublisher(IPublisher):
             return content, []
         proxied = {}
         for entry in manifest:
-            if not isinstance(entry, dict):
+            ref = reference_from_entry(entry)
+            if not ref or not ref.source_url:
                 continue
-            local = entry.get("local")
-            source = entry.get("source")
-            if not local or not source:
-                continue
-            url = pixiv_proxy_url(str(source))
+            url = pixiv_proxy_url(ref.source_url)
             if url:
-                local = os.path.normpath(str(local)).replace(os.sep, "/")
-                proxied[local] = url
+                local = os.path.normpath(ref.local_ref).replace(os.sep, "/")
+                proxied[local] = (url, ref.asset_id)
 
         if not proxied:
             return content, []
@@ -507,10 +504,14 @@ class TelegraphPublisher(IPublisher):
             if src.startswith(("http://", "https://", "//", "data:")):
                 return match.group(0)
             rel = os.path.normpath(src).replace(os.sep, "/")
-            url = proxied.get(rel)
-            if not url:
+            hit = proxied.get(rel)
+            if not hit:
                 return match.group(0)
-            assets.append({"local": rel, "remote": url, "status": "proxied"})
+            url, asset_id = hit
+            asset = {"local": rel, "remote": url, "status": "proxied"}
+            if asset_id:
+                asset["assetId"] = asset_id
+            assets.append(asset)
             return f"![{match.group(1)}]({url})"
 
         return self.MARKDOWN_LOCAL_IMG_RE.sub(_replace, content), assets

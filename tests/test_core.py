@@ -1304,6 +1304,29 @@ class TestPublishMarkdownRichMedia(unittest.TestCase):
         blob = json.dumps(content)
         self.assertIn("https://media.example.com/pixiv/img-master/img/1_p0.jpg", blob)
 
+    def test_publish_rich_markdown_proxy_manifest_carries_asset_id(self):
+        """New manifest shape (assetId/sourceUrl) rewrites and reports assetId."""
+        md = "![插图](images/001.jpg)"
+        path = self._write_md(md)
+        manifest = [{
+            "local": "images/001.jpg",
+            "assetId": "pixiv:123:pixivimage:p0",
+            "sourceUrl": "https://i.pximg.net/img-master/img/1_p0.jpg",
+        }]
+        with patch.dict(
+            "telepress.pixiv_proxy.os.environ",
+            {"TELEPRESS_PIXIV_PROXY_BASE": "https://media.example.com"},
+        ):
+            self.mock_client.create_page.return_value = {
+                "url": "http://telegra.ph/rich2", "path": "rich2",
+            }
+            result = self.publisher.publish_rich_markdown(
+                path, title="富媒体2", manifest=manifest,
+            )
+        self.assertEqual(len(result["assets"]), 1)
+        self.assertEqual(result["assets"][0]["assetId"], "pixiv:123:pixivimage:p0")
+        self.assertEqual(result["assets"][0]["status"], "proxied")
+
     def test_publish_rich_markdown_returns_assets(self):
         """Rich publish returns {url, assets} with the uploaded mapping."""
         md = "开场白\n\n![插图](images/001.jpg)\n\n结尾"

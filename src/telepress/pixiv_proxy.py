@@ -10,11 +10,38 @@ to the existing image-host upload path.
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from typing import Optional
 from urllib.parse import urlsplit, urlunsplit
 
 PIXIV_CDN_HOST = "i.pximg.net"
 PIXIV_CDN_PREFIX = f"https://{PIXIV_CDN_HOST}/"
+
+
+@dataclass
+class MediaReference:
+    """Canonical media reference for a rich-novel manifest entry."""
+
+    local_ref: str
+    source_url: Optional[str] = None
+    asset_id: Optional[str] = None
+    local_path: Optional[str] = None
+
+
+def reference_from_entry(entry: dict) -> Optional[MediaReference]:
+    """Accept both the legacy ``{local, source}`` and new ``{assetId, sourceUrl}`` shapes."""
+    if not isinstance(entry, dict):
+        return None
+    local = entry.get("local") or entry.get("local_ref") or entry.get("localPath")
+    if not local:
+        return None
+    source = entry.get("sourceUrl") or entry.get("source_url") or entry.get("source")
+    return MediaReference(
+        local_ref=str(local),
+        source_url=str(source) if source else None,
+        asset_id=entry.get("assetId") or entry.get("asset_id"),
+        local_path=entry.get("localPath") or entry.get("local_path"),
+    )
 
 
 def pixiv_proxy_base() -> str:
