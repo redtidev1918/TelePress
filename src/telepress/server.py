@@ -139,7 +139,7 @@ def _publish_gallery_worker(
     link: Optional[str],
     spoiler: Optional[str],
     token: Optional[str],
-    media_fetched: Optional[list] = None
+    manifest: Optional[list] = None
 ) -> Dict:
     """
     Save the uploaded images in order, pack them into a zip, and publish them
@@ -149,7 +149,7 @@ def _publish_gallery_worker(
     tmp_dir = tempfile.mkdtemp(prefix='telepress-gallery-')
     try:
         files = files or []
-        media_fetched = media_fetched or []
+        manifest = manifest or []
         paths = []
         used_names = set()
         for index, upload in enumerate(files, start=1):
@@ -167,7 +167,7 @@ def _publish_gallery_worker(
                 shutil.copyfileobj(upload.file, out)
             paths.append(dest)
 
-        for index, ref in enumerate(media_fetched, start=1):
+        for index, ref in enumerate(manifest, start=1):
             if not isinstance(ref, dict):
                 raise ValidationError("media entries must be objects")
             source = ref.get('sourceUrl') or ref.get('source') or ref.get('source_url')
@@ -327,7 +327,8 @@ async def publish_gallery(
     link: Optional[str] = Form(None),
     spoiler: Optional[str] = Form(None),
     token: Optional[str] = Form(None),
-    media: Optional[str] = Form(None)
+    manifest: Optional[str] = Form(None),
+    media: Optional[str] = Form(None)  # legacy alias
 ):
     """
     Upload multiple image files and publish them as a Telegra.ph gallery.
@@ -340,22 +341,29 @@ async def publish_gallery(
 
     Compatible with generic multipart delivery clients (e.g. PixivFlow
     `httpMultipart` targets posting repeated `files` parts).
+
+    `manifest` is optional JSON: `[{"sourceUrl": "https://cdn.example/1.jpg",
+    "assetId": "...", "kind": "photo", "filename": "1.jpg"}]`. When present,
+    TelePress fetches each https `sourceUrl` server-side (best-effort, 50 MiB
+    cap) instead of requiring uploaded parts, so large galleries can be
+    published by sending only a small descriptor list.
     """
     import json as _json
-    parsed_media = None
-    if media:
+    manifest_body = manifest or media
+    parsed_manifest = None
+    if manifest_body:
         try:
-            parsed_media = _json.loads(media)
-            if not isinstance(parsed_media, list):
-                raise ValueError("media must be a JSON list")
+            parsed_manifest = _json.loads(manifest_body)
+            if not isinstance(parsed_manifest, list):
+                raise ValueError("manifest must be a JSON list")
         except (ValueError, _json.JSONDecodeError) as exc:
-            raise HTTPException(status_code=400, detail=f"media 解析失败: {exc}")
-    if not files and not parsed_media:
-        raise HTTPException(status_code=422, detail="Provide files or media")
+            raise HTTPException(status_code=400, detail=f"manifest 解析失败: {exc}")
+    if not files and not parsed_manifest:
+        raise HTTPException(status_code=422, detail="Provide files or a manifest")
     try:
         result = await run_in_threadpool(
             _publish_gallery_worker, files, title, tags, link, spoiler, token,
-            parsed_media or [],
+            parsed_manifest or [],
         )
         return GalleryPublishResponse(
             url=result['url'], files=result['files']

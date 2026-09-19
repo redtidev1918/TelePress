@@ -343,7 +343,7 @@ class TestGalleryEndpoint(unittest.TestCase):
 
     @patch('telepress.server.urllib.request.urlopen')
     def test_publish_gallery_media_manifest(self, mock_urlopen):
-        """Test remote MediaReference[] manifest path publishes without uploading files."""
+        """Test generic remote MediaReference manifest path publishes without uploading files."""
         import json as _json
 
         class FakeResp:
@@ -368,9 +368,9 @@ class TestGalleryEndpoint(unittest.TestCase):
             data={
                 "title": "Manifest",
                 "link": "https://www.deviantart.com/a/art/x-1",
-                "media": _json.dumps([
-                    {"assetId": "deviantart:u1:p0", "kind": "photo", "sourceUrl": "https://cdn.test/1.jpg"},
-                    {"assetId": "deviantart:u1:p1", "kind": "photo", "sourceUrl": "https://cdn.test/2.jpg"},
+                "manifest": _json.dumps([
+                    {"assetId": "u1:p0", "kind": "photo", "sourceUrl": "https://cdn.test/1.jpg"},
+                    {"assetId": "u1:p1", "kind": "photo", "sourceUrl": "https://cdn.test/2.jpg", "filename": "b.jpg"},
                 ]),
             },
         )
