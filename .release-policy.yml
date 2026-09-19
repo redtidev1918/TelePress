@@ -44,5 +44,8 @@
         "requireLatestBase": true
       }
     }
+  },
+  "release": {
+    "postRelease": []
   }
 }

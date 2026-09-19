@@ -181,3 +181,28 @@ jobs:
         if: steps.probe.outputs.status == 'missing'
         with:
           packages-dir: dist
+
+  # 发布后自动刷新下载页（docs/download.md + docs/en/download.md）。
+  # GITHUB_TOKEN 创建的 Release 不会触发 release: published，所以这里用 caller
+  # 自己的 actions:write 在 release 成功且有新 tag 时派发 update-download-page.yml；
+  # 该 workflow 提交 docs 后再由 static.yml（push paths）自动重建 Pages。
+  post-release-docs:
+    needs: release
+    if: >-
+      needs.release.result == 'success' &&
+      needs.release.outputs.run_release == '1' &&
+      github.event_name != 'pull_request' &&
+      needs.release.outputs.tag != null &&
+      needs.release.outputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Dispatch download page refresh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run update-download-page.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "${{ github.event.repository.default_branch }}"
