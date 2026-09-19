@@ -653,8 +653,13 @@ class TestImageKitHost(unittest.TestCase):
             host = ImageKitHost(private_key='pk')
             self.assertEqual(host.upload(tmp), 'https://ik.imagekit.io/x/file.png')
             kwargs = mock_post.call_args[1]
-            self.assertTrue(kwargs['headers']['Authorization'].startswith('Basic '))
-            self.assertNotIn('pk', str(kwargs))
+            auth = kwargs['headers']['Authorization']
+            self.assertTrue(auth.startswith('Basic '))
+            import base64 as _b64
+            self.assertEqual(
+                _b64.b64decode(auth.split(' ', 1)[1]).decode(), 'pk:'
+            )
+            self.assertEqual(kwargs['data']['fileName'], os.path.basename(tmp))
             self.assertIn('file', kwargs['files'])
         finally:
             os.unlink(tmp)
