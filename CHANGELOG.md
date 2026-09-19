@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.12.0](https://github.com/redtidev1918/telepress/compare/v0.11.0...v0.12.0) (2026-09-19)
+
+
+### Features
+
+* **rich-novel:** accept MediaReference manifest (assetId/sourceUrl) ([#38](https://github.com/redtidev1918/telepress/issues/38)) ([051a449](https://github.com/redtidev1918/telepress/commit/051a44904143eaeed0ee49d5a9b1b4b3fb99d7d3))
+
 ## [0.11.0](https://github.com/redtidev1918/telepress/compare/v0.10.0...v0.11.0) (2026-09-19)
 
 
