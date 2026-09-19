@@ -495,6 +495,31 @@ class TestRichNovelEndpoint(unittest.TestCase):
             [{"local": "images/001.jpg", "source": "https://i.pximg.net/x.jpg"}],
         )
 
+    def test_rich_novel_response_exposes_asset_id(self):
+        """RichNovelAsset response model keeps assetId from the manifest."""
+        self.mock_publisher_instance.publish_rich_markdown.return_value = {
+            "url": "http://telegra.ph/rich",
+            "assets": [{
+                "local": "images/001.jpg",
+                "remote": "https://media.example.com/pixiv/x.jpg",
+                "status": "proxied",
+                "assetId": "pixiv:123:pixivimage:p0",
+            }],
+        }
+        response = self.client.post(
+            "/publish/rich-novel",
+            files=[("md", ("novel.md", "![图](images/001.jpg)".encode(), "text/markdown"))],
+            data={
+                "title": "富媒体小说",
+                "token": "tok",
+                "manifest": '[{"local": "images/001.jpg", "assetId": "pixiv:123:pixivimage:p0", "sourceUrl": "https://i.pximg.net/x.jpg"}]',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["assets"][0]["assetId"], "pixiv:123:pixivimage:p0"
+        )
+
     @patch('telepress.server.TelegraphPublisher')
     def test_rich_novel_error_returns_400(self, MockPublisher):
         from telepress.exceptions import ValidationError
