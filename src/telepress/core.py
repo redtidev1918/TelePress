@@ -16,7 +16,7 @@ from .auth import TelegraphAuth
 from .config import load_config
 from .converter import NovelMarkdownRenderer
 from .uploader import ImageUploader
-from .pixiv_proxy import pixiv_proxy_url, reference_from_entry
+from .media_proxy import proxy_url as media_proxy_url, reference_from_entry
 from .utils import (
     natural_sort_key, safe_extract_zip, validate_file_size,
     MAX_TEXT_SIZE, MAX_IMAGES_PER_PAGE, MAX_IMAGE_SIZE,
@@ -475,7 +475,7 @@ class TelegraphPublisher(IPublisher):
         return result_url
 
     def _apply_proxy_manifest(self, content: str, manifest) -> tuple:
-        """Rewrite markdown image refs that a manifest maps to a Pixiv proxy URL.
+        """Rewrite markdown image refs that a manifest maps to a media proxy URL.
 
         Returns ``(content, assets)`` where ``assets`` contains one
         ``{local, remote, status: 'proxied'}`` entry per successful rewrite.
@@ -489,7 +489,7 @@ class TelegraphPublisher(IPublisher):
             ref = reference_from_entry(entry)
             if not ref or not ref.source_url:
                 continue
-            url = pixiv_proxy_url(ref.source_url)
+            url = media_proxy_url(ref.source_url)
             if url:
                 local = os.path.normpath(ref.local_ref).replace(os.sep, "/")
                 proxied[local] = (url, ref.asset_id)
@@ -528,9 +528,10 @@ class TelegraphPublisher(IPublisher):
         identical to the existing rich-markdown path.
 
         ``manifest`` is optional: a list of ``{"local": "<md rel path>",
-        "source": "<original Pixiv CDN URL>"}``. When ``TELEPRESS_PIXIV_PROXY_BASE``
-        is configured, matching Pixiv sources are rewritten to the proxy and
-        reported as ``status: "proxied"`` instead of being uploaded.
+        "source": "<original CDN URL>"}``. When a media proxy is configured
+        (``TELEPRESS_MEDIA_PROXY_BASE`` + ``TELEPRESS_MEDIA_PROXY_HOSTS``, or the
+        legacy ``TELEPRESS_PIXIV_PROXY_BASE`` alias), matching hosts are rewritten
+        to the proxy and reported as ``status: "proxied"`` instead of being uploaded.
         """
         try:
             with open(file_path, 'r', encoding='utf-8') as f:

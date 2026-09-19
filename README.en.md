@@ -136,12 +136,20 @@ An optional `manifest` form field accepts a JSON array, e.g.:
 [{"local": "images/001.jpg", "source": "https://i.pximg.net/..."}]
 ```
 
-When `TELEPRESS_PIXIV_PROXY_BASE` is set (a Cloudflare Worker proxying the
-fixed `i.pximg.net` upstream), entries whose `source` is a Pixiv CDN URL are
-rewritten to `<base>/pixiv/...` and used directly (`status: "proxied"`); without
-a proxy, or when `source` is not a Pixiv CDN URL, the existing image-host
-upload remains the fallback. The Worker only accepts `GET`/`HEAD`, pins the
-upstream to `i.pximg.net`, and is not an open proxy.
+The proxy rewrite is **generic**, not Pixiv-specific:
+
+- `TELEPRESS_MEDIA_PROXY_BASE`: proxy entry base URL (e.g. your worker).
+- `TELEPRESS_MEDIA_PROXY_HOSTS`: comma-separated allowlist of upstream CDN
+  hosts (e.g. `i.pximg.net, i.etsystatic.com`). Only https entries whose host
+  is listed are rewritten; everything else keeps the image-host upload
+  fallback, so this never becomes an open proxy/SSRF surface.
+- `TELEPRESS_MEDIA_PROXY_PATH_PREFIX`: optional route prefix, default `media`;
+  rewrite result is `<base>/<prefix>/<host>/<path>`.
+
+Backwards compatibility: setting only the legacy `TELEPRESS_PIXIV_PROXY_BASE`
+keeps the old behavior (only `i.pximg.net`, `<base>/pixiv/<path>`). The proxy is
+expected to accept only `GET`/`HEAD` and pin its upstream inside your configured
+service.
 
 Blocking file, compression, and network work is dispatched away from the API
 event loop, so concurrent requests do not serialize on those operations.

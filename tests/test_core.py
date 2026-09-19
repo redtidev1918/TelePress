@@ -1273,7 +1273,7 @@ class TestPublishMarkdownRichMedia(unittest.TestCase):
                 self.publisher.publish_markdown(path, title="telegraph失败")
 
     def test_publish_rich_markdown_proxy_manifest(self):
-        """Manifest-mapped Pixiv sources are rewritten to the proxy, not uploaded."""
+        """Manifest-mapped allowlisted CDN sources are rewritten to the generic proxy."""
         md = "开场白\n\n![插图](images/001.jpg)\n\n结尾"
         path = self._write_md(md)
         manifest = [{
@@ -1281,8 +1281,11 @@ class TestPublishMarkdownRichMedia(unittest.TestCase):
             "source": "https://i.pximg.net/img-master/img/1_p0.jpg",
         }]
         with patch.dict(
-            "telepress.pixiv_proxy.os.environ",
-            {"TELEPRESS_PIXIV_PROXY_BASE": "https://media.example.com"},
+            "telepress.media_proxy.os.environ",
+            {
+                "TELEPRESS_MEDIA_PROXY_BASE": "https://media.example.com",
+                "TELEPRESS_MEDIA_PROXY_HOSTS": "i.pximg.net",
+            },
         ):
             self.mock_client.create_page.return_value = {
                 "url": "http://telegra.ph/rich", "path": "rich",
@@ -1297,12 +1300,12 @@ class TestPublishMarkdownRichMedia(unittest.TestCase):
         self.assertEqual(result["assets"][0]["status"], "proxied")
         self.assertEqual(
             result["assets"][0]["remote"],
-            "https://media.example.com/pixiv/img-master/img/1_p0.jpg",
+            "https://media.example.com/media/i.pximg.net/img-master/img/1_p0.jpg",
         )
         self.publisher.uploader.upload_batch.assert_not_called()
         content = self.mock_client.create_page.call_args.kwargs["content"]
         blob = json.dumps(content)
-        self.assertIn("https://media.example.com/pixiv/img-master/img/1_p0.jpg", blob)
+        self.assertIn("https://media.example.com/media/i.pximg.net/img-master/img/1_p0.jpg", blob)
 
     def test_publish_rich_markdown_proxy_manifest_carries_asset_id(self):
         """New manifest shape (assetId/sourceUrl) rewrites and reports assetId."""
@@ -1314,8 +1317,11 @@ class TestPublishMarkdownRichMedia(unittest.TestCase):
             "sourceUrl": "https://i.pximg.net/img-master/img/1_p0.jpg",
         }]
         with patch.dict(
-            "telepress.pixiv_proxy.os.environ",
-            {"TELEPRESS_PIXIV_PROXY_BASE": "https://media.example.com"},
+            "telepress.media_proxy.os.environ",
+            {
+                "TELEPRESS_MEDIA_PROXY_BASE": "https://media.example.com",
+                "TELEPRESS_MEDIA_PROXY_HOSTS": "i.pximg.net",
+            },
         ):
             self.mock_client.create_page.return_value = {
                 "url": "http://telegra.ph/rich2", "path": "rich2",

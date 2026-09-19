@@ -341,6 +341,76 @@ class TestGalleryEndpoint(unittest.TestCase):
         response = self.client.post("/publish/gallery")
         self.assertEqual(response.status_code, 422)
 
+    @patch('telepress.server._gallery_remote_media_enabled', return_value=False)
+    def test_publish_gallery_remote_media_disabled_by_default(self, _mock_enabled):
+        """Remote media is opt-in; without the env flag it must be rejected."""
+        import json as _json
+        response = self.client.post(
+            "/publish/gallery",
+            data={
+                "title": "Remote",
+                "media": _json.dumps([
+                    {"assetId": "deviantart:u1:p0", "kind": "photo", "sourceUrl": "https://cdn.test/1.jpg"},
+                ]),
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("TELEPRESS_ALLOW_REMOTE_GALLERY_MEDIA", response.json()['detail'])
+        self.mock_publisher_instance.publish_zip_gallery.assert_not_called()
+
+    @patch('telepress.server._gallery_remote_media_enabled', return_value=True)
+    @patch('telepress.server.urllib.request.urlopen')
+    def test_publish_gallery_remote_media_enabled_fetches_remote(self, mock_urlopen, _mock_enabled):
+        """With the flag on and media[] supplied, TelePress fetches https sources."""
+        import json as _json
+
+        class FakeResp:
+            def __init__(self):
+                self.first = True
+
+            def read(self, n=None):
+                if self.first:
+                    self.first = False
+                    return b'img-bytes'
+                return b''
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        mock_urlopen.return_value = FakeResp()
+        response = self.client.post(
+            "/publish/gallery",
+            data={
+                "title": "Remote manifest",
+                "link": "https://www.deviantart.com/a/art/x-1",
+                "media": _json.dumps([
+                    {"assetId": "deviantart:u1:p0", "kind": "photo", "sourceUrl": "https://cdn.test/1.jpg"},
+                    {"assetId": "deviantart:u1:p1", "kind": "photo", "sourceUrl": "https://cdn.test/2.jpg"},
+                ]),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['ok'], True)
+        self.assertEqual(data['files'], 2)
+        call_args = self.mock_publisher_instance.publish_zip_gallery.call_args
+        self.assertEqual(call_args[1]['title'], 'Remote manifest')
+        self.assertEqual(mock_urlopen.call_count, 2)
+
+    @patch('telepress.server._gallery_remote_media_enabled', return_value=True)
+    def test_publish_gallery_remote_media_rejects_non_https(self, _mock_enabled):
+        """Remote media sources must be https (avoids open-proxy/SSRF widening)."""
+        import json as _json
+        response = self.client.post(
+            "/publish/gallery",
+            data={"media": _json.dumps([{"sourceUrl": "http://insecure.local/1.jpg"}])},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("sourceUrl must be an https URL", response.json()['detail'])
+
     @patch('telepress.server.TelegraphPublisher')
     def test_publish_gallery_telepress_error(self, MockPublisher):
         """Test that TelePressError returns 400."""
