@@ -4,9 +4,9 @@
 
 本页由 GitHub Actions 在每次发版时**自动更新**，始终指向最新 Release。
 
-## 最新版本：`v0.6.1`（2026-09-08）
+## 最新版本：`v0.14.0`（2026-09-19）
 
-👉 [查看 Release 说明与校验和](https://github.com/redtidev1918/telepress/releases/tag/v0.6.1)
+👉 [查看 Release 说明与校验和](https://github.com/redtidev1918/telepress/releases/tag/v0.14.0)
 
 TelePress 是一个 Python 包，**只通过 PyPI 分发**，没有平台安装包。版本记录与发版产物见 [Releases](https://github.com/redtidev1918/telepress/releases)。
 
@@ -43,7 +43,7 @@ pip install -e .
 
 | 平台 | 文件 | 大小 | 下载 |
 |---|---|---|---|
-| 通用 | `RELEASE-METADATA.json` | 1 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.6.1/RELEASE-METADATA.json) |
-| 通用 | `SHA256SUMS` | 0 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.6.1/SHA256SUMS) |
-| 通用 | `telepress-0.6.1-py3-none-any.whl` | 38 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.6.1/telepress-0.6.1-py3-none-any.whl) |
-| 通用 | `telepress-0.6.1.tar.gz` | 69 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.6.1/telepress-0.6.1.tar.gz) |
+| 通用 | `RELEASE-METADATA.json` | 2 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.14.0/RELEASE-METADATA.json) |
+| 通用 | `SHA256SUMS` | 0 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.14.0/SHA256SUMS) |
+| 通用 | `telepress-0.14.0-py3-none-any.whl` | 48 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.14.0/telepress-0.14.0-py3-none-any.whl) |
+| 通用 | `telepress-0.14.0.tar.gz` | 92 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.14.0/telepress-0.14.0.tar.gz) |
