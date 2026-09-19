@@ -4,6 +4,20 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.11.0](https://github.com/redtidev1918/telepress/compare/v0.10.0...v0.11.0) (2026-09-19)
+
+
+### Features
+
+* **rich-novel:** Pixiv proxy rewrite via optional manifest ([#37](https://github.com/redtidev1918/telepress/issues/37)) ([baa5309](https://github.com/redtidev1918/telepress/commit/baa5309a61d8d5b317c0c71eb51ded2b2da13ac6))
+
+
+### Documentation
+
+* **agent:** add AGENTS.md for the publishing plane boundary ([#35](https://github.com/redtidev1918/telepress/issues/35)) ([1a8f1b0](https://github.com/redtidev1918/telepress/commit/1a8f1b0a284a59d2a303dc70cb2b0ed7b5e87963))
+* **agent:** point telepress AGENTS.md at cross-repo ecosystem authority ([76e97d5](https://github.com/redtidev1918/telepress/commit/76e97d56e3e6d6ce7a0d337a862308b228e6974b))
+* **agent:** reference CONTRACT.md and fix Telegraph spelling ([53a14ca](https://github.com/redtidev1918/telepress/commit/53a14ca80e4a3ae5fed9f892cdcf9dad6faae44b))
+
 ## [0.10.0](https://github.com/redtidev1918/telepress/compare/v0.9.0...v0.10.0) (2026-09-17)
 
 
