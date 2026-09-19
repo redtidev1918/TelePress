@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.12.1](https://github.com/redtidev1918/telepress/compare/v0.12.0...v0.12.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* **rich-novel:** expose assetId in RichNovelAsset response model ([#40](https://github.com/redtidev1918/telepress/issues/40)) ([66e58a9](https://github.com/redtidev1918/telepress/commit/66e58a9407e2d2f5bccec6c42b18dc7c2a43dfe2))
+
 ## [0.12.0](https://github.com/redtidev1918/telepress/compare/v0.11.0...v0.12.0) (2026-09-19)
 
 
