@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: write # GITHUB_TOKEN push 不会触发 Pages；显式派发 static.yml
 
 concurrency:
   group: update-download-page
@@ -32,8 +33,10 @@ jobs:
         run: python3 .github/scripts/update_download_page.py "${{ github.repository }}"
 
       - name: Commit if changed
+        id: commit
         run: |
           if [ -z "$(git status --porcelain)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "download page already up to date"
             exit 0
           fi
@@ -42,3 +45,11 @@ jobs:
           git add docs/download.md docs/en/download.md
           git commit -m "docs: refresh download page (${{ github.event.release.tag_name || 'manual' }})"
           git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Rebuild docs site (explicit dispatch)
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run static.yml --ref "${{ github.event.repository.default_branch }}"
