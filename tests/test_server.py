@@ -443,7 +443,7 @@ class TestRichNovelEndpoint(unittest.TestCase):
     def test_rich_novel_success(self):
         seen = {}
 
-        def fake_publish(md_path, title):
+        def fake_publish(md_path, title, manifest=None):
             seen['md_path'] = md_path
             seen['title'] = title
             seen['img1'] = os.path.isfile(
@@ -471,6 +471,29 @@ class TestRichNovelEndpoint(unittest.TestCase):
         self.assertEqual(seen['title'], '富媒体小说')
         self.assertTrue(seen['img1'])
         self.assertTrue(seen['img2'])
+
+    def test_rich_novel_passes_manifest(self):
+        """manifest form field is parsed and forwarded to the publisher."""
+        seen = {}
+        self.mock_publisher_instance.publish_rich_markdown.side_effect = (
+            lambda md_path, title, manifest=None: seen.update(
+                manifest=manifest
+            ) or {"url": "http://telegra.ph/rich", "assets": []}
+        )
+        response = self.client.post(
+            "/publish/rich-novel",
+            files=[("md", ("novel.md", "![图](images/001.jpg)".encode(), "text/markdown"))],
+            data={
+                "title": "富媒体小说",
+                "token": "tok",
+                "manifest": '[{"local": "images/001.jpg", "source": "https://i.pximg.net/x.jpg"}]',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            seen["manifest"],
+            [{"local": "images/001.jpg", "source": "https://i.pximg.net/x.jpg"}],
+        )
 
     @patch('telepress.server.TelegraphPublisher')
     def test_rich_novel_error_returns_400(self, MockPublisher):

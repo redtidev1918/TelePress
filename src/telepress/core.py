@@ -16,6 +16,7 @@ from .auth import TelegraphAuth
 from .config import load_config
 from .converter import NovelMarkdownRenderer
 from .uploader import ImageUploader
+from .pixiv_proxy import pixiv_proxy_url
 from .utils import (
     natural_sort_key, safe_extract_zip, validate_file_size,
     MAX_TEXT_SIZE, MAX_IMAGES_PER_PAGE, MAX_IMAGE_SIZE,
@@ -473,7 +474,48 @@ class TelegraphPublisher(IPublisher):
         
         return result_url
 
-    def publish_rich_markdown(self, file_path: str, title: str) -> Dict:
+    def _apply_proxy_manifest(self, content: str, manifest) -> tuple:
+        """Rewrite markdown image refs that a manifest maps to a Pixiv proxy URL.
+
+        Returns ``(content, assets)`` where ``assets`` contains one
+        ``{local, remote, status: 'proxied'}`` entry per successful rewrite.
+        Manifest entries without a usable proxy URL are ignored and continue to
+        the normal image-host upload path.
+        """
+        if not manifest:
+            return content, []
+        proxied = {}
+        for entry in manifest:
+            if not isinstance(entry, dict):
+                continue
+            local = entry.get("local")
+            source = entry.get("source")
+            if not local or not source:
+                continue
+            url = pixiv_proxy_url(str(source))
+            if url:
+                local = os.path.normpath(str(local)).replace(os.sep, "/")
+                proxied[local] = url
+
+        if not proxied:
+            return content, []
+
+        assets = []
+
+        def _replace(match) -> str:
+            src = match.group(2).strip()
+            if src.startswith(("http://", "https://", "//", "data:")):
+                return match.group(0)
+            rel = os.path.normpath(src).replace(os.sep, "/")
+            url = proxied.get(rel)
+            if not url:
+                return match.group(0)
+            assets.append({"local": rel, "remote": url, "status": "proxied"})
+            return f"![{match.group(1)}]({url})"
+
+        return self.MARKDOWN_LOCAL_IMG_RE.sub(_replace, content), assets
+
+    def publish_rich_markdown(self, file_path: str, title: str, manifest=None) -> Dict:
         """
         Publish a rich-novel markdown file with local image assets.
 
@@ -483,6 +525,11 @@ class TelegraphPublisher(IPublisher):
         The publishing itself reuses :meth:`publish_markdown` by first rewriting
         local image refs to remote URLs, so pagination/deduplication behaviour is
         identical to the existing rich-markdown path.
+
+        ``manifest`` is optional: a list of ``{"local": "<md rel path>",
+        "source": "<original Pixiv CDN URL>"}``. When ``TELEPRESS_PIXIV_PROXY_BASE``
+        is configured, matching Pixiv sources are rewritten to the proxy and
+        reported as ``status: "proxied"`` instead of being uploaded.
         """
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -493,9 +540,11 @@ class TelegraphPublisher(IPublisher):
         if not content.strip():
             raise ValidationError("File is empty or contains only whitespace")
 
-        content, assets = self._upload_markdown_local_images(
+        content, proxy_assets = self._apply_proxy_manifest(content, manifest)
+        content, uploaded_assets = self._upload_markdown_local_images(
             content, os.path.dirname(os.path.abspath(file_path))
         )
+        assets = proxy_assets + uploaded_assets
 
         fd, tmp_path = tempfile.mkstemp(suffix='.md', prefix='telepress-rich-')
         try:
