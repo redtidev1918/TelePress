@@ -4,6 +4,14 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.14.2](https://github.com/redtidev1918/telepress/compare/v0.14.1...v0.14.2) (2026-09-19)
+
+
+### Documentation
+
+* refresh download page (manual) ([ca41b33](https://github.com/redtidev1918/telepress/commit/ca41b33c47c07ab360449194331a6020fab27762))
+* **reorg:** split README into canonical docs tree and fix agent contract ([9f0cc88](https://github.com/redtidev1918/telepress/commit/9f0cc8830be901e44a0d0b9a942924ca7ae093a2))
+
 ## [0.14.1](https://github.com/redtidev1918/telepress/compare/v0.14.0...v0.14.1) (2026-09-19)
 
 
