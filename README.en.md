@@ -3,6 +3,7 @@
 [![CI](https://github.com/redtidev1918/TelePress/actions/workflows/ci.yml/badge.svg)](https://github.com/redtidev1918/TelePress/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/telepress.svg)](https://pypi.org/project/telepress/)
 [![Python](https://img.shields.io/pypi/pyversions/telepress.svg)](https://pypi.org/project/telepress/)
+[![Docs](https://img.shields.io/badge/Docs-documentation-6366f1?style=flat-square)](https://redtidev1918.github.io/TelePress/)
 
 **Language / 语言:** English · [中文](README.md)
 
