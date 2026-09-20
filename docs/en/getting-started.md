@@ -26,7 +26,7 @@ pip install "telepress[yaml]"
 Development install:
 
 ```bash
-git clone https://github.com/redtidev1918/telepress.git
+git clone https://github.com/redtidev1918/TelePress.git
 cd telepress
 python -m pip install --editable ".[dev]"
 ```

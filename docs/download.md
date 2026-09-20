@@ -6,9 +6,9 @@
 
 ## 最新版本：`v0.14.1`（2026-09-19）
 
-👉 [查看 Release 说明与校验和](https://github.com/redtidev1918/telepress/releases/tag/v0.14.1)
+👉 [查看 Release 说明与校验和](https://github.com/redtidev1918/TelePress/releases/tag/v0.14.1)
 
-TelePress 是一个 Python 包，**只通过 PyPI 分发**，没有平台安装包。版本记录与发版产物见 [Releases](https://github.com/redtidev1918/telepress/releases)。
+TelePress 是一个 Python 包，**只通过 PyPI 分发**，没有平台安装包。版本记录与发版产物见 [Releases](https://github.com/redtidev1918/TelePress/releases)。
 
 ## 从 PyPI 安装
 
@@ -21,7 +21,7 @@ pip install telepress
 ## 从源码安装
 
 ```bash
-git clone https://github.com/redtidev1918/telepress.git
+git clone https://github.com/redtidev1918/TelePress.git
 cd telepress
 pip install -e .
 ```
@@ -30,11 +30,11 @@ pip install -e .
 
 每次发版在 Releases 页提供 PyPI 轮子与源码包（`telepress-<version>-py3-none-any.whl`、`.tar.gz`）以及校验和：
 
-<https://github.com/redtidev1918/telepress/releases>
+<https://github.com/redtidev1918/TelePress/releases>
 
 ## 更新日志
 
-见 [CHANGELOG](https://github.com/redtidev1918/telepress/blob/master/CHANGELOG.md)。
+见 [CHANGELOG](https://github.com/redtidev1918/TelePress/blob/master/CHANGELOG.md)。
 
 ## 相关
 
@@ -43,7 +43,7 @@ pip install -e .
 
 | 平台 | 文件 | 大小 | 下载 |
 |---|---|---|---|
-| 通用 | `RELEASE-METADATA.json` | 2 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.14.1/RELEASE-METADATA.json) |
-| 通用 | `SHA256SUMS` | 0 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.14.1/SHA256SUMS) |
-| 通用 | `telepress-0.14.1-py3-none-any.whl` | 48 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.14.1/telepress-0.14.1-py3-none-any.whl) |
-| 通用 | `telepress-0.14.1.tar.gz` | 92 KB | [⬇️ 下载](https://github.com/redtidev1918/telepress/releases/download/v0.14.1/telepress-0.14.1.tar.gz) |
+| 通用 | `RELEASE-METADATA.json` | 2 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.1/RELEASE-METADATA.json) |
+| 通用 | `SHA256SUMS` | 0 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.1/SHA256SUMS) |
+| 通用 | `telepress-0.14.1-py3-none-any.whl` | 48 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.1/telepress-0.14.1-py3-none-any.whl) |
+| 通用 | `telepress-0.14.1.tar.gz` | 92 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.1/telepress-0.14.1.tar.gz) |

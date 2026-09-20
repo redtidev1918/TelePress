@@ -41,4 +41,4 @@
   - [Releasing](/docs/en/development/releasing.md)
 - 项目
   - [PyPI](https://pypi.org/project/telepress/)
-  - [Releases](https://github.com/redtidev1918/telepress/releases)
+  - [Releases](https://github.com/redtidev1918/TelePress/releases)

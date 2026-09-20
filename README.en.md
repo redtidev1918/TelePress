@@ -1,6 +1,6 @@
 # TelePress
 
-[![CI](https://github.com/redtidev1918/telepress/actions/workflows/ci.yml/badge.svg)](https://github.com/redtidev1918/telepress/actions/workflows/ci.yml)
+[![CI](https://github.com/redtidev1918/TelePress/actions/workflows/ci.yml/badge.svg)](https://github.com/redtidev1918/TelePress/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/telepress.svg)](https://pypi.org/project/telepress/)
 [![Python](https://img.shields.io/pypi/pyversions/telepress.svg)](https://pypi.org/project/telepress/)
 

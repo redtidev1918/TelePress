@@ -1,4 +1,4 @@
-TelePress 是一个 Python 包，**只通过 PyPI 分发**，没有平台安装包。版本记录与发版产物见 [Releases](https://github.com/redtidev1918/telepress/releases)。
+TelePress 是一个 Python 包，**只通过 PyPI 分发**，没有平台安装包。版本记录与发版产物见 [Releases](https://github.com/redtidev1918/TelePress/releases)。
 
 ## 从 PyPI 安装
 
@@ -11,7 +11,7 @@ pip install telepress
 ## 从源码安装
 
 ```bash
-git clone https://github.com/redtidev1918/telepress.git
+git clone https://github.com/redtidev1918/TelePress.git
 cd telepress
 pip install -e .
 ```
@@ -20,11 +20,11 @@ pip install -e .
 
 每次发版在 Releases 页提供 PyPI 轮子与源码包（`telepress-<version>-py3-none-any.whl`、`.tar.gz`）以及校验和：
 
-<https://github.com/redtidev1918/telepress/releases>
+<https://github.com/redtidev1918/TelePress/releases>
 
 ## 更新日志
 
-见 [CHANGELOG](https://github.com/redtidev1918/telepress/blob/master/CHANGELOG.md)。
+见 [CHANGELOG](https://github.com/redtidev1918/TelePress/blob/master/CHANGELOG.md)。
 
 ## 相关
 
