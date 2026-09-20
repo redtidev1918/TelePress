@@ -1,4 +1,6 @@
 {
+  "name": "TelePress",
+  "emoji": "📰",
   "navigation": {
     "allowSidebarAnchors": true,
     "allowCombinedLocales": true
