@@ -7,6 +7,8 @@
 
 **语言 / Language:** 中文 · [English](README.en.md)
 
+📖 完整文档：<https://redtidev1918.github.io/TelePress/>
+
 TelePress 是一个发布平面：把 Markdown、纯文本、图片和富媒体内容发布为
 Telegraph 页面，不关心内容来自哪个平台。
 
