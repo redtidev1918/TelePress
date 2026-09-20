@@ -75,3 +75,15 @@ README 不是全量文档；稳定契约放在 `docs/`：
 ## License
 
 [MIT](LICENSE)
+
+## 致谢
+
+TelePress 建立在这些项目之上：
+
+- [Python-Markdown](https://python-markdown.github.io/)：Markdown 解析与扩展。
+- [Pillow](https://github.com/python-pillow/Pillow)：图集压缩。
+- [requests](https://github.com/psf/requests)：HTTP 客户端。
+- [telegraph](https://github.com/python-telegram-bot/telegraph)（python-telegram-bot 团队的 Telegraph 封装）：Telegraph 页面发布。
+- 可选 REST 发布层：[FastAPI](https://fastapi.tiangolo.com/) · [Uvicorn](https://www.uvicorn.org/)。
+
+接口与规范参考：[Telegraph API](https://telegra.ph/api)。
