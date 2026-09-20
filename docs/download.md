@@ -1,6 +1,10 @@
-# 📥 下载 telepress
+<!-- docsite-release-repo: redtidev1918/TelePress -->
+<!-- docsite-release-tag: v0.14.1 -->
+# 📥 下载 TelePress
 
 **语言 / Language:** 中文 · [English](/docs/en/download.md)
+
+<!-- docsite: generated from redtidev1918/TelePress release v0.14.1; do not edit by hand -->
 
 本页由 GitHub Actions 在每次发版时**自动更新**，始终指向最新 Release。
 
