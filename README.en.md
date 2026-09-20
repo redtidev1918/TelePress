@@ -76,3 +76,15 @@ The README is not a full manual; the stable contracts live under `docs/`:
 ## License
 
 [MIT](LICENSE)
+
+## Acknowledgements
+
+TelePress builds on:
+
+- [Python-Markdown](https://python-markdown.github.io/): Markdown parsing and extensions.
+- [Pillow](https://github.com/python-pillow/Pillow): gallery compression.
+- [requests](https://github.com/psf/requests): HTTP client.
+- [telegraph](https://github.com/python-telegram-bot/telegraph) (the python-telegram-bot team's Telegraph wrapper): publishing pages.
+- Optional REST layer: [FastAPI](https://fastapi.tiangolo.com/) · [Uvicorn](https://www.uvicorn.org/).
+
+Interfaces: [Telegraph API](https://telegra.ph/api).
