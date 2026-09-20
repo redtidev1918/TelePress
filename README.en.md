@@ -7,6 +7,8 @@
 
 **Language / 语言:** English · [中文](README.md)
 
+**A Python library and CLI that publishes text, images and archives to Telegraph.**
+
 📖 Full documentation: <https://redtidev1918.github.io/TelePress/>
 
 TelePress is a publishing plane: it turns Markdown, plain text, images and rich
