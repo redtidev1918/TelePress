@@ -14,14 +14,6 @@ media into Telegraph pages, regardless of which platform the content came from.
 - Rich media (REST): publish Markdown + local images via `/publish/rich-novel`
 - Images can be resolved through an **upload host** or a **generic CDN proxy**
 
-The homepage answers five things:
-
-1. What it is: [positioning](/docs/en/architecture/publishing-plane.md)
-2. What it is for: turning existing content into public Telegraph preview URLs
-3. How to install: `pip install telepress`
-4. 30-second run: `telepress article.md --title "Example"`
-5. Where to continue: [documentation index](/docs/en/README.md)
-
 ## Install
 
 ```bash

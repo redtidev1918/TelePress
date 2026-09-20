@@ -14,14 +14,6 @@ Telegraph 页面，不关心内容来自哪个平台。
 - 富媒体（REST）：通过 `/publish/rich-novel` 发布 Markdown + 本地图
 - 图片可在「上传图床」与「通用 CDN 代理」两条路径间选择
 
-源代码与本页封面只讲这五件事：
-
-1. 是什么：[简介与定位](/docs/architecture/publishing-plane.md)
-2. 适合做什么：把已有内容安全地变成可公开预览的 Telegraph 页面
-3. 怎么安装：`pip install telepress`
-4. 30 秒怎么跑起来：`telepress article.md --title "示例"`
-5. 进一步去哪里看：[文档索引](/docs/README.md)
-
 ## 安装
 
 ```bash
