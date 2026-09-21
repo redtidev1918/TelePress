@@ -11,8 +11,8 @@
 
 [完整文档](https://redtidev1918.github.io/TelePress/)
 
-TelePress 是一个发布平面：把 Markdown、纯文本、图片和富媒体内容发布为
-Telegraph 页面，不关心内容来自哪个平台。
+TelePress 把 Markdown、纯文本、图片和富媒体内容发布为 Telegraph 页面，
+不关心内容来自哪个平台。
 
 - 纯文本 / Markdown：自动分页并生成上一页、下一页导航
 - 图片 / ZIP 图集：压缩后发布为 Telegra.ph 相册
