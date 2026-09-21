@@ -7,7 +7,7 @@
 
 **语言 / Language:** 中文 · [English](README.en.md)
 
-**向 Telegraph 发布文本、图片与档案的 Python 库与 CLI。**
+> **向 Telegraph 发布文本、图片与档案的 Python 库与 CLI。**
 
 📖 [完整文档](https://redtidev1918.github.io/TelePress/)
 
