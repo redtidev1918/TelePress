@@ -108,6 +108,23 @@ jobs:
         with:
           packages-dir: dist
 
+  # ReleaseGraph's finalize ACKs before this caller's independent publish-pypi
+  # job, so the registry health gate refuses to acknowledge an incomplete
+  # version at that point; the reusable workflow re-enters the idempotent ACK
+  # only after PyPI publication.
+  acknowledge:
+    needs: [release, publish-pypi]
+    if: >-
+      needs.release.result == 'success'
+      && needs.release.outputs.run_release == '1'
+      && (needs.publish-pypi.result == 'success' || needs.publish-pypi.result == 'skipped')
+      && github.event_name != 'pull_request'
+      && !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true')
+    uses: redtidev1918/releasegraph/.github/workflows/reusable-acknowledge.yml@5921199685a582f6d9e944ec276b58d32f6d90a1
+    with:
+      version: ${{ needs.release.outputs.version }}
+    secrets: inherit
+
   repair-pypi:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.repair == 'true' && github.event.inputs.stage == 'pypi'
     runs-on: ubuntu-latest
