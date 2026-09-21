@@ -33,9 +33,14 @@ No local tag or `twine upload` is needed.
 
 - Allow Actions to create pull requests and request write permissions.
 - Create a `pypi` GitHub environment.
-- Configure PyPI Trusted Publisher: owner `redtidev1918`, repo `telepress`,
+- Configure PyPI Trusted Publisher: owner `redtidev1918`, repo `TelePress` (the canonical GitHub repository name; case-sensitive),
   workflow `release.yml`, environment `pypi`.
 - Optionally configure `RELEASE_PLEASE_TOKEN`.
+
+If publishing fails with `invalid-publisher`, verify these four values in the
+PyPI trusted publisher settings. The repository field must use the canonical
+`TelePress`, not lowercase `telepress`. After correcting it, resume the same
+version through the release workflow's manual repair.
 
 ## Version policy
 
