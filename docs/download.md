@@ -1,16 +1,16 @@
 <!-- docsite-release-repo: redtidev1918/TelePress -->
-<!-- docsite-release-tag: v0.14.1 -->
+<!-- docsite-release-tag: v0.14.2 -->
 # 📥 下载 TelePress
 
 **语言 / Language:** 中文 · [English](/docs/en/download.md)
 
-<!-- docsite: generated from redtidev1918/TelePress release v0.14.1; do not edit by hand -->
+<!-- docsite: generated from redtidev1918/TelePress release v0.14.2; do not edit by hand -->
 
 本页由 GitHub Actions 在每次发版时**自动更新**，始终指向最新 Release。
 
-## 最新版本：`v0.14.1`（2026-09-19）
+## 最新版本：`v0.14.2`（2026-09-21）
 
-👉 [查看 Release 说明与校验和](https://github.com/redtidev1918/TelePress/releases/tag/v0.14.1)
+👉 [查看 Release 说明与校验和](https://github.com/redtidev1918/TelePress/releases/tag/v0.14.2)
 
 TelePress 是一个 Python 包，**只通过 PyPI 分发**，没有平台安装包。版本记录与发版产物见 [Releases](https://github.com/redtidev1918/TelePress/releases)。
 
@@ -47,7 +47,7 @@ pip install -e .
 
 | 平台 | 文件 | 大小 | 下载 |
 |---|---|---|---|
-| 通用 | `RELEASE-METADATA.json` | 2 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.1/RELEASE-METADATA.json) |
-| 通用 | `SHA256SUMS` | 0 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.1/SHA256SUMS) |
-| 通用 | `telepress-0.14.1-py3-none-any.whl` | 48 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.1/telepress-0.14.1-py3-none-any.whl) |
-| 通用 | `telepress-0.14.1.tar.gz` | 92 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.1/telepress-0.14.1.tar.gz) |
+| 通用 | `RELEASE-METADATA.json` | 2 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.2/RELEASE-METADATA.json) |
+| 通用 | `SHA256SUMS` | 0 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.2/SHA256SUMS) |
+| 通用 | `telepress-0.14.2-py3-none-any.whl` | 45 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.2/telepress-0.14.2-py3-none-any.whl) |
+| 通用 | `telepress-0.14.2.tar.gz` | 104 KB | [⬇️ 下载](https://github.com/redtidev1918/TelePress/releases/download/v0.14.2/telepress-0.14.2.tar.gz) |
