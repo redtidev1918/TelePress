@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.14.2](https://github.com/redtidev1918/TelePress/compare/v0.14.1...v0.14.2) (2026-09-21)
+
+
+### Bug Fixes
+
+* **ci:** run caller ACK even when PyPI job is skipped ([6732ce3](https://github.com/redtidev1918/TelePress/commit/6732ce3e264dffb21d4e92d89e99ef8658e2206b))
+
 ## [0.14.1](https://github.com/redtidev1918/telepress/compare/v0.14.0...v0.14.1) (2026-09-19)
 
 
