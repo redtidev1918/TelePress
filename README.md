@@ -9,7 +9,7 @@
 
 **向 Telegraph 发布文本、图片与档案的 Python 库与 CLI。**
 
-📖 完整文档：<https://redtidev1918.github.io/TelePress/>
+📖 [完整文档](https://redtidev1918.github.io/TelePress/)
 
 TelePress 是一个发布平面：把 Markdown、纯文本、图片和富媒体内容发布为
 Telegraph 页面，不关心内容来自哪个平台。
