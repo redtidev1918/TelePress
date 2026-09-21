@@ -33,9 +33,11 @@ post-release-docs（自动刷新下载页 + 重建 Pages）
 
 - GitHub Actions 允许创建 PR 与请求写权限。
 - 创建名为 `pypi` 的 GitHub environment。
-- 在 PyPI 配置 GitHub Trusted Publisher：owner `redtidev1918`、repo `telepress`、
+- 在 PyPI 配置 GitHub Trusted Publisher：owner `redtidev1918`、repo `TelePress`（GitHub 仓库规范名，大小写敏感）、
   workflow `release.yml`、environment `pypi`。
 - 可选 `RELEASE_PLEASE_TOKEN` 保证 release PR 的 CI 正常触发。
+
+如果发布阶段报 `invalid-publisher`，先在 PyPI 的 trusted publisher 设置里核对这四项；Repository 一栏必须用规范名 `TelePress`，不能写小写 `telepress`。核好后再用 release workflow 的手工 repair 恢复同一版本。
 
 ## 版本策略
 
