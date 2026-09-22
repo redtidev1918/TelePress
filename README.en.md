@@ -11,8 +11,8 @@
 
 📖 [Full documentation](https://redtidev1918.github.io/TelePress/)
 
-TelePress is a publishing plane: it turns Markdown, plain text, images and rich
-media into Telegraph pages, regardless of which platform the content came from.
+TelePress turns Markdown, plain text, images and rich media into Telegraph
+pages, regardless of which platform the content came from.
 
 - Plain text / Markdown: automatic pagination with Prev / Next navigation
 - Images / ZIP galleries: compressed and published as a Telegra.ph album
