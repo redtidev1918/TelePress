@@ -44,6 +44,7 @@ MediaReference
 - 建立业务数据库；
 - 接管上游平台凭据；
 - 新建平行 Renderer / Publisher / Media Resolver pipeline（新的发布路径必须复用现有管道）。
+- 提交一次性报告或阶段快照；确需保留的证据进 `docs/archive/` 并带 docsite 生命周期块。
 
 ## 改完请自证
 
