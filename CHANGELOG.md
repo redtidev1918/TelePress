@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.15.0](https://github.com/redtidev1918/TelePress/compare/v0.14.2...v0.15.0) (2026-09-26)
+
+
+### Features
+
+* **uploader:** add ResolvedMedia, retry classification and structured errors ([a0bb1c2](https://github.com/redtidev1918/TelePress/commit/a0bb1c25ae28d973e58a7771ea35437a4b5c3d91))
+
 ## [0.14.2](https://github.com/redtidev1918/TelePress/compare/v0.14.1...v0.14.2) (2026-09-21)
 
 
