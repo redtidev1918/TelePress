@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.16.1](https://github.com/redtidev1918/TelePress/compare/v0.16.0...v0.16.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **image_host:** honor upload_returns_stable_url in capabilities ([acd90d7](https://github.com/redtidev1918/TelePress/commit/acd90d76cd5c9359cd9d607fe4792c2f53f753e0))
+
 ## [0.16.0](https://github.com/redtidev1918/TelePress/compare/v0.15.0...v0.16.0) (2026-09-26)
 
 
