@@ -56,6 +56,14 @@ class TestCapabilitiesUnittest(unittest.TestCase):
         for host in (LitterboxHost(), ZeroXZeroHost()):
             self.assertTrue(host.temporary, type(host).__name__)
             self.assertTrue(host.capabilities.temporary)
+            # Temporary hosts do not return stable URLs.
+            self.assertFalse(host.capabilities.upload_returns_stable_url)
+
+    def test_stable_url_defaults_true(self):
+        from telepress.image_host import CatboxHost, ImgbbHost
+        cap = CatboxHost().capabilities
+        self.assertTrue(cap.upload_returns_stable_url)
+        self.assertFalse(cap.temporary)
 
     def test_arbitrary_files_reflected(self):
         # These hosts declare supports_arbitrary_files=True as class attributes.

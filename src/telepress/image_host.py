@@ -43,6 +43,9 @@ class ImageHost(ABC):
     supports_arbitrary_files = False
     #: Whether this host stores files temporarily (files may expire).
     temporary = False
+    #: Whether the URL returned by :meth:`upload` is long-lived/stable. Temporary
+    #: hosts (e.g. 0x0, litterbox) declare ``False``; most hosts are ``True``.
+    upload_returns_stable_url = True
 
     @abstractmethod
     def upload(self, image_path: str) -> str:
@@ -85,6 +88,7 @@ class ImageHost(ABC):
             supports_native_batch=self.supports_native_batch,
             supports_arbitrary_files=self.supports_arbitrary_files,
             temporary=self.temporary,
+            upload_returns_stable_url=self.upload_returns_stable_url,
         )
     
     @property
@@ -505,6 +509,7 @@ class ZeroXZeroHost(ImageHost):
 
     supports_arbitrary_files = True
     temporary = True
+    upload_returns_stable_url = False
 
     @property
     def name(self) -> str:
@@ -535,6 +540,7 @@ class LitterboxHost(ImageHost):
 
     supports_arbitrary_files = True
     temporary = True
+    upload_returns_stable_url = False
 
     def __init__(self, expiration: str = '24h', **kwargs):
         if expiration not in self.ALLOWED_TIMES:
