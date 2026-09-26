@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.16.0](https://github.com/redtidev1918/TelePress/compare/v0.15.0...v0.16.0) (2026-09-26)
+
+
+### Features
+
+* **image_host:** add ImageHostCapabilities aggregate capability declaration ([33feb9f](https://github.com/redtidev1918/TelePress/commit/33feb9f21b05473dbc0d4420875834649b34917e))
+
 ## [0.15.0](https://github.com/redtidev1918/TelePress/compare/v0.14.2...v0.15.0) (2026-09-26)
 
 
