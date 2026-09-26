@@ -9,9 +9,14 @@ import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, List, Dict, Callable, Any, Union
 from dataclasses import dataclass, field
-from .exceptions import UploadError
+from .exceptions import (
+    UploadError, RetryableError, RateLimitError, ProviderPermanentError,
+    ProviderAuthError, ValidationError,
+)
 from .utils import compress_image_to_size, MAX_IMAGE_SIZE
 from .image_host import ImageHost, create_image_host
+from .media_result import ResolvedMedia
+from .logging import logger, event
 
 
 @dataclass
@@ -23,6 +28,29 @@ class UploadResult:
     success: bool = False
     compressed: bool = False
     attempts: int = 0
+    provider: Optional[str] = None
+    media_id: Optional[str] = None
+
+    @property
+    def media_uri(self) -> Optional[str]:
+        """``<provider>://<media_id>`` when both are known, else ``None``."""
+        if self.provider and self.media_id:
+            return f"{self.provider}://{self.media_id}"
+        return None
+
+    def as_resolved(self, **extra) -> ResolvedMedia:
+        """Upgrade this result into a richer :class:`ResolvedMedia`.
+
+        Backwards-compatible: ``url`` is carried over verbatim; ``provider`` /
+        ``media_id`` are surfaced when the host supplied them. This is an opt-in
+        conversion — existing code that only reads ``UploadResult.url`` is unchanged.
+        """
+        return ResolvedMedia(
+            url=self.url or "",
+            provider=self.provider,
+            media_id=self.media_id,
+            **extra,
+        )
 
 
 @dataclass 
@@ -44,6 +72,45 @@ class BatchUploadResult:
     def get_url_map(self) -> Dict[str, str]:
         """Get mapping of original path -> uploaded URL."""
         return {r.path: r.url for r in self.results if r.success and r.url}
+
+
+def _classify_retryable(exc: BaseException) -> bool:
+    """Whether an exception should be retried, vs. treated as permanent.
+
+    Retryable:
+      - :class:`RetryableError` / :class:`RateLimitError` (TelePress semantics)
+      - requests network errors (timeout, connection reset, transient)
+      - HTTP 5xx and HTTP 429
+
+    Permanent (no retry):
+      - :class:`ProviderPermanentError`, :class:`ProviderAuthError`
+      - HTTP 4xx other than 429
+      - :class:`ValidationError` (invalid input never fixes itself on retry)
+
+    Unknown exceptions default to **retryable**, preserving the previous
+    behaviour (everything was retried). The classification is opt-in tightening:
+    code that raises the new permanent-* / auth exceptions gets fail-fast;
+    everything else behaves as before.
+    """
+    if isinstance(exc, (ProviderPermanentError,)):
+        return False
+    if isinstance(exc, (ProviderAuthError, ValidationError)):
+        return False
+    if isinstance(exc, (RetryableError, RateLimitError)):
+        return True
+    try:
+        from requests.exceptions import HTTPError, RequestException
+    except ImportError:  # pragma: no cover - requests is a hard dependency
+        return True
+    if isinstance(exc, HTTPError):
+        status = exc.response.status_code if exc.response is not None else None
+        if status is not None and 400 <= status < 500:
+            # 429 is rate limiting (retryable); other 4xx are permanent.
+            return status == 429
+        return True  # 5xx (temporary server error) retryable
+    if isinstance(exc, RequestException):
+        return True  # timeout / connection / etc.
+    return True
 
 
 class ImageUploader:
@@ -153,7 +220,44 @@ class ImageUploader:
                     os.unlink(upload_path)
                 except OSError:
                     pass
-    
+
+    def resolve(
+        self,
+        path: str,
+        retries: int = 3,
+        auto_compress: bool = True,
+        max_size: int = MAX_IMAGE_SIZE,
+        **extra,
+    ) -> ResolvedMedia:
+        """Resolve a media item into a structured :class:`ResolvedMedia`.
+
+        This is the **opt-in** structured sibling of :meth:`upload`. It returns
+        a richer object (url + provider + optional media_id/mime/size, and a
+        provider-qualified ``media_uri``) while :meth:`upload` keeps returning a
+        plain ``str`` URL — existing consumers are unchanged.
+
+        ``**extra`` is forwarded into :class:`ResolvedMedia` (e.g. ``source_id``,
+        ``mime_type``, ``width`` …) for callers that have that metadata.
+        """
+        url = self.upload(
+            path,
+            retries=retries,
+            auto_compress=auto_compress,
+            max_size=max_size,
+        )
+        try:
+            size = os.path.getsize(path)
+        except OSError:
+            size = None
+        return ResolvedMedia(
+            url=url,
+            provider=self.host.name,
+            filename=os.path.basename(path),
+            size=size,
+            source_id=path,
+            **extra,
+        )
+
     def _upload_with_retry(
         self,
         upload_path: str,
@@ -162,21 +266,48 @@ class ImageUploader:
         retry_delay: float,
         max_retry_delay: float
     ) -> str:
-        """Upload with exponential backoff retry."""
+        """Upload with exponential backoff retry.
+
+        Only **retryable** failures (transient network errors, HTTP 5xx, HTTP 429,
+        :class:`RetryableError`) are retried. Permanent failures (bad credentials,
+        invalid input, other 4xx) fail fast instead of being retried pointlessly
+        — see :func:`_classify_retryable`.
+        """
         last_error = None
         delay = retry_delay
-        
+
         for attempt in range(retries):
             try:
                 return self.host.upload(upload_path)
             except Exception as e:
                 last_error = e
+                if not _classify_retryable(e):
+                    event(
+                        "upload_failed_permanent",
+                        provider=self.host.name,
+                        path=original_path,
+                        attempt=attempt + 1,
+                    )
+                    raise e from e
                 if attempt < retries - 1:
-                    # Exponential backoff with jitter
+                    # Exponential backoff with jitter.
+                    sleep_for = delay
+                    if isinstance(e, RateLimitError) and e.retry_after is not None:
+                        # Respect upstream Retry-After when provided (bounded).
+                        sleep_for = max(0.0, float(e.retry_after))
                     jitter = random.uniform(0, 0.1 * delay)
-                    time.sleep(min(delay + jitter, max_retry_delay))
+                    sleep_for = min(sleep_for + jitter, max_retry_delay)
+                    event(
+                        "upload_retry",
+                        provider=self.host.name,
+                        path=original_path,
+                        attempt=attempt + 1,
+                        delay_seconds=round(sleep_for, 3),
+                        error=type(e).__name__,
+                    )
+                    time.sleep(sleep_for)
                     delay *= 2
-        
+
         raise UploadError(
             f"Failed to upload {original_path} after {retries} attempts: {last_error}"
         )

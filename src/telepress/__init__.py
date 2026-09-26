@@ -24,8 +24,13 @@ from .exceptions import (
     AuthenticationError,
     SecurityError,
     DependencyError,
-    ConversionError
+    ConversionError,
+    RetryableError,
+    RateLimitError,
+    ProviderAuthError,
+    ProviderPermanentError,
 )
+from .media_result import ResolvedMedia, provider_qualify
 from .utils import (
     MAX_IMAGES_PER_PAGE,
     MAX_IMAGE_SIZE,
@@ -77,6 +82,14 @@ __all__ = [
     'SecurityError',
     'DependencyError',
     'ConversionError',
+    'RetryableError',
+    'RateLimitError',
+    'ProviderAuthError',
+    'ProviderPermanentError',
+
+    # Structured media result
+    'ResolvedMedia',
+    'provider_qualify',
     
     # Constants
     'MAX_IMAGE_SIZE',
