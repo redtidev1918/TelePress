@@ -35,7 +35,7 @@ No local tag or `twine upload` is needed.
 - Create a `pypi` GitHub environment.
 - Configure PyPI Trusted Publisher: owner `redtidev1918`, repo `TelePress` (the canonical GitHub repository name; case-sensitive),
   workflow `release.yml`, environment `pypi`.
-- Optionally configure `RELEASE_PLEASE_TOKEN`.
+- Configure `RELEASE_PLEASE_TOKEN` (a fine-grained PAT with Contents / Pull requests / Issues read and write): the release PR is then authored by a real account, so CI actually triggers. Without it the author is `github-actions[bot]`, GitHub holds every run the PR triggers, and that run is finalised as a failure on merge even though CI never ran. See the [ReleaseGraph callers doc](https://github.com/redtidev1918/releasegraph/blob/main/docs/en/callers.md).
 
 If publishing fails with `invalid-publisher`, verify these four values in the
 PyPI trusted publisher settings. The repository field must use the canonical
