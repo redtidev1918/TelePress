@@ -12,13 +12,38 @@ import hashlib
 import time
 import requests
 from typing import Optional, Dict, Any, List, Union
+from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 from .exceptions import UploadError
+
+
+@dataclass(frozen=True)
+class ImageHostCapabilities:
+    """Read-only capability declaration for an :class:`ImageHost`.
+
+    Aggregates the host's known traits into one queryable object, surfaced via
+    :attr:`ImageHost.capabilities`. Existing per-attribute declarations
+    (``supports_native_batch``, ``supports_arbitrary_files``, ``temporary``)
+    are preserved unchanged and remain directly readable for backwards
+    compatibility — this is purely a discovery convenience on top.
+    """
+
+    name: str
+    supports_native_batch: bool = False
+    supports_arbitrary_files: bool = False
+    temporary: bool = False
+    upload_returns_stable_url: bool = True
 
 
 class ImageHost(ABC):
     """Abstract base class for image hosting services."""
     
+    #: Declares whether arbitrary (non-image) files are accepted. Subclass
+    #: attribute; kept for direct compatibility.
+    supports_arbitrary_files = False
+    #: Whether this host stores files temporarily (files may expire).
+    temporary = False
+
     @abstractmethod
     def upload(self, image_path: str) -> str:
         """Upload image and return URL."""
@@ -45,6 +70,22 @@ class ImageHost(ABC):
     def supports_native_batch(self) -> bool:
         """Whether the host supports optimized batch uploading natively."""
         return False
+
+    @property
+    def capabilities(self) -> ImageHostCapabilities:
+        """Read-only aggregate capability declaration for this host.
+
+        Convenience wrapper over the host's existing trait attributes
+        (``supports_native_batch``, ``supports_arbitrary_files``, ``temporary``)
+        so callers can discover a host's abilities at once. The underlying
+        attributes remain available and unchanged.
+        """
+        return ImageHostCapabilities(
+            name=self.name,
+            supports_native_batch=self.supports_native_batch,
+            supports_arbitrary_files=self.supports_arbitrary_files,
+            temporary=self.temporary,
+        )
     
     @property
     @abstractmethod

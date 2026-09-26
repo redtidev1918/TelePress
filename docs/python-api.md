@@ -51,6 +51,28 @@ if result.success:
   Provider A 迁移到 Provider B 时保留身份。
 - `provider_qualify(provider, media_id)` 是独立辅助函数。
 
+### 图床能力声明（ImageHostCapabilities）
+
+`ImageHost.capabilities` 返回只读的 :class:`ImageHostCapabilities`，一次性聚合该图床的
+能力特征，便于上层按能力做决策：
+
+```python
+from telepress import ImageUploader, LitterboxHost
+
+host = LitterboxHost()
+cap = host.capabilities
+print(cap.name, cap.temporary, cap.supports_arbitrary_files, cap.supports_native_batch)
+# → litterbox True True False
+```
+
+- 是现有 `host.supports_native_batch` / `host.supports_arbitrary_files` /
+  `host.temporary` 的直接聚合，**旧属性读取方式完全保留**。
+- `upload_returns_stable_url`（默认 `True`）标明该 host 返回的 URL 是否长期稳定，
+  临时图床（如 0x0 / litterbox）应标 `False`。
+- `ImageHostCapabilities` 是冻结（frozen）的只读对象，不可修改。
+
+上层逻辑可用它统一决策（而非逐 host if/else），例如"临时图床不要用于长期归档"。
+
 ## 导出
 
 `telepress` 包从 `__init__.py` 导出：

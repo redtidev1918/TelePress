@@ -52,6 +52,29 @@ if result.success:
   provider, so identity survives migrating from Provider A to Provider B.
 - `provider_qualify(provider, media_id)` is a standalone helper.
 
+### Image host capabilities (ImageHostCapabilities)
+
+`ImageHost.capabilities` returns a read-only :class:`ImageHostCapabilities` that
+aggregates the host's capability traits in one object, for capability-driven logic:
+
+```python
+from telepress import ImageUploader, LitterboxHost
+
+host = LitterboxHost()
+cap = host.capabilities
+print(cap.name, cap.temporary, cap.supports_arbitrary_files, cap.supports_native_batch)
+# → litterbox True True False
+```
+
+- Direct aggregate of `host.supports_native_batch` / `host.supports_arbitrary_files`
+  / `host.temporary`; **the old attribute reads are fully preserved**.
+- `upload_returns_stable_url` (default `True`) flags whether the host returns
+  long-lived URLs; temporary hosts (0x0 / litterbox) should declare `False`.
+- `ImageHostCapabilities` is a frozen (immutable) read-only object.
+
+Callers can decide by capability instead of per-host if/else — e.g. "don't use a
+temporary host for long-term archiving".
+
 ## Exports
 
 The `telepress` package exports publishers, uploaders, host classes
