@@ -75,7 +75,7 @@ Interactive OpenAPI docs are at `http://127.0.0.1:8000/docs`. See
 - Plain-text chapter headings such as `Chapter 1` / `第一章` are recognized.
 - Large text is paginated around ~10,000 characters with Prev / Next navigation.
 - Galleries paginate every 100 images.
-- Default per-image limit is 5 MiB; oversized images are compressed (GIFs are not).
+- Default per-image limit is 5 MiB; oversized images use demand-driven libvips/pyvips resizing and bounded JPEG/WebP compression, while small files are preserved and GIFs are not re-encoded.
 - Inputs are capped at 2 GiB before processing.
 - `~/.telepress_cache.json` avoids re-publishing identical text.
 - Supported extensions: `.txt`, `.md`, `.markdown`, `.rst`, `.text`, `.jpg`,

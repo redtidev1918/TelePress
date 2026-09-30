@@ -15,7 +15,7 @@ TelePress 把 Markdown、纯文本、图片和富媒体内容发布为 Telegraph
 不关心内容来自哪个平台。
 
 - 纯文本 / Markdown：自动分页并生成上一页、下一页导航
-- 图片 / ZIP 图集：压缩后发布为 Telegra.ph 相册
+- 图片 / ZIP 图集：超限图片使用 libvips 按需压缩后发布为 Telegra.ph 相册（GIF 保持原样）
 - 富媒体（REST）：通过 `/publish/rich-novel` 发布 Markdown + 本地图
 - 图片可在「上传图床」与「通用 CDN 代理」两条路径间选择
 
@@ -83,7 +83,8 @@ README 不是全量文档；稳定契约放在 `docs/`：
 TelePress 建立在这些项目之上：
 
 - [Python-Markdown](https://python-markdown.github.io/)：Markdown 解析与扩展。
-- [Pillow](https://github.com/python-pillow/Pillow)：图集压缩。
+- [Pillow](https://github.com/python-pillow/Pillow)：图集与兼容格式处理。
+- [libvips / pyvips](https://github.com/libvips/pyvips)：大图片按需读取、缩放与有界 JPEG/WebP 压缩。
 - [requests](https://github.com/psf/requests)：HTTP 客户端。
 - [telegraph](https://github.com/python-telegram-bot/telegraph)（python-telegram-bot 团队的 Telegraph 封装）：Telegraph 页面发布。
 - 可选 REST 发布层：[FastAPI](https://fastapi.tiangolo.com/) · [Uvicorn](https://www.uvicorn.org/)。
