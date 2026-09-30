@@ -6,7 +6,7 @@
 
 ## Current release
 
-`0.14.1`
+`0.16.2`
 
 ## Current publication paths
 

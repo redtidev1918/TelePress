@@ -15,7 +15,7 @@ TelePress turns Markdown, plain text, images and rich media into Telegraph
 pages, regardless of which platform the content came from.
 
 - Plain text / Markdown: automatic pagination with Prev / Next navigation
-- Images / ZIP galleries: compressed and published as a Telegra.ph album
+- Images / ZIP galleries: oversized images are compressed on demand with libvips and published as a Telegra.ph album (GIFs are preserved)
 - Rich media (REST): publish Markdown + local images via `/publish/rich-novel`
 - Images can be resolved through an **upload host** or a **generic CDN proxy**
 
@@ -84,7 +84,8 @@ The README is not a full manual; the stable contracts live under `docs/`:
 TelePress builds on:
 
 - [Python-Markdown](https://python-markdown.github.io/): Markdown parsing and extensions.
-- [Pillow](https://github.com/python-pillow/Pillow): gallery compression.
+- [Pillow](https://github.com/python-pillow/Pillow): gallery and compatibility-format handling.
+- [libvips / pyvips](https://github.com/libvips/pyvips): demand-driven large-image loading, resizing, and bounded JPEG/WebP compression.
 - [requests](https://github.com/psf/requests): HTTP client.
 - [telegraph](https://github.com/python-telegram-bot/telegraph) (the python-telegram-bot team's Telegraph wrapper): publishing pages.
 - Optional REST layer: [FastAPI](https://fastapi.tiangolo.com/) · [Uvicorn](https://www.uvicorn.org/).
