@@ -11,6 +11,7 @@ from telepress.utils import (
 )
 from telepress.exceptions import SecurityError, ValidationError, ConversionError
 from telepress import utils as utils_module
+from telepress import vips as vips_module
 from PIL import Image
 
 
@@ -318,23 +319,22 @@ class TestConstants(unittest.TestCase):
 class TestCompressImageToSize(unittest.TestCase):
     def test_quality_search_uses_logarithmic_encodes(self):
         """Quality-only compression finds the best fit in few encodes."""
-        class FakeImage:
+        class FakeProbe:
             def __init__(self):
                 self.qualities = []
 
-            def save(self, buffer, **kwargs):
-                quality = kwargs['quality']
+            def __call__(self, quality):
                 self.qualities.append(quality)
-                buffer.write(b'x' * quality)
+                return quality  # size grows with quality, so best quality under limit is 72
 
-        image = FakeImage()
-        result = utils_module._try_quality_compression(
-            image, max_size=72, min_quality=30, out_format='JPEG'
+        probe = FakeProbe()
+        result = vips_module._binary_search_quality(
+            30, 95, probe, max_size=72
         )
 
         self.assertIsNotNone(result)
-        self.assertEqual(result.tell(), 72)
-        self.assertLessEqual(len(image.qualities), 7)
+        self.assertEqual(result, 72)
+        self.assertLessEqual(len(probe.qualities), 7)
 
     def test_small_image_no_compression(self):
         """Test that images under the limit are not compressed."""
@@ -552,6 +552,21 @@ class TestCompressImageToSize(unittest.TestCase):
 
     def test_bmp_input_format(self):
         """Test BMP input format is handled correctly."""
+        # The self-contained pyvips binary may be built without a BMP loader.
+        # Probe a tiny BMP first and skip when libvips cannot read the format.
+        probe_bmp = tempfile.mktemp(suffix='.bmp')
+        Image.new('RGB', (8, 8), color='black').save(probe_bmp, 'BMP')
+        bmp_supported = True
+        try:
+            vips_module.pyvips.Image.new_from_file(
+                probe_bmp, access='sequential')
+        except Exception:
+            bmp_supported = False
+        finally:
+            os.unlink(probe_bmp)
+        if not bmp_supported:
+            self.skipTest('bundled libvips has no BMP loader')
+
         with tempfile.NamedTemporaryFile(delete=False, suffix='.bmp') as f:
             tmp_path = f.name
         
