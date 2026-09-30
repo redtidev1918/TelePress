@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.16.2](https://github.com/redtidev1918/TelePress/compare/v0.16.1...v0.16.2) (2026-09-30)
+
+
+### Performance Improvements
+
+* **media:** use libvips for bounded image compression ([564dbd7](https://github.com/redtidev1918/TelePress/commit/564dbd7974814ae8aac160cbc4a59a621b806801))
+
 ## [0.16.1](https://github.com/redtidev1918/TelePress/compare/v0.16.0...v0.16.1) (2026-09-26)
 
 
