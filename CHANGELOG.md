@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.16.3](https://github.com/redtidev1918/TelePress/compare/v0.16.2...v0.16.3) (2026-10-02)
+
+
+### Bug Fixes
+
+* **core:** loud warning when rich-novel manifest proxies to nothing ([#61](https://github.com/redtidev1918/TelePress/issues/61)) ([212cde6](https://github.com/redtidev1918/TelePress/commit/212cde6f574be98e4a2a99e9c1b64f419368864b))
+
 ## [0.16.2](https://github.com/redtidev1918/TelePress/compare/v0.16.1...v0.16.2) (2026-09-30)
 
 
