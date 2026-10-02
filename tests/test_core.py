@@ -1333,6 +1333,52 @@ class TestPublishMarkdownRichMedia(unittest.TestCase):
         self.assertEqual(result["assets"][0]["assetId"], "pixiv:123:pixivimage:p0")
         self.assertEqual(result["assets"][0]["status"], "proxied")
 
+    def test_proxy_manifest_without_proxy_config_warns_loudly(self):
+        """Manifest has real sources but proxy env is missing: never silent.
+
+        Regression guard for the production incident where the caller had the
+        proxy configured under its own variable names while the library read
+        TELEPRESS_MEDIA_PROXY_* — every inline image reached Telegraph as a
+        relative ref and was silently dropped (text-only page). The library
+        must keep publishing (best-effort) but must shout.
+        """
+        md = "![插图](images/001.jpg)"
+        path = self._write_md(md)
+        manifest = [{
+            "local": "images/001.jpg",
+            "assetId": "pixiv:123:pixivimage:p0",
+            "sourceUrl": "https://i.pximg.net/img-master/img/1_p0.jpg",
+        }]
+        clean_env = {
+            k: v for k, v in os.environ.items()
+            if k not in (
+                "TELEPRESS_MEDIA_PROXY_BASE",
+                "TELEPRESS_MEDIA_PROXY_HOSTS",
+                "TELEPRESS_PIXIV_PROXY_BASE",
+            )
+        }
+        self.mock_client.create_page.return_value = {
+            "url": "http://telegra.ph/rich3", "path": "rich3",
+        }
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with patch.dict("telepress.media_proxy.os.environ", clean_env, clear=True):
+            with redirect_stdout(buf):
+                result = self.publisher.publish_rich_markdown(
+                    path, title="富媒体3", manifest=manifest,
+                )
+
+        # Page still publishes (best-effort), but nothing is marked proxied …
+        self.assertEqual(result["url"], "http://telegra.ph/rich3")
+        self.assertEqual(
+            [a for a in result["assets"] if a.get("status") == "proxied"], [],
+        )
+        # … and the misconfiguration is loud, never silent.
+        warning = buf.getvalue()
+        self.assertIn("none were proxied", warning)
+        self.assertIn("TELEPRESS_MEDIA_PROXY_BASE", warning)
+
     def test_publish_rich_markdown_returns_assets(self):
         """Rich publish returns {url, assets} with the uploaded mapping."""
         md = "开场白\n\n![插图](images/001.jpg)\n\n结尾"

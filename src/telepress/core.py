@@ -485,16 +485,32 @@ class TelegraphPublisher(IPublisher):
         if not manifest:
             return content, []
         proxied = {}
+        with_source = 0
         for entry in manifest:
             ref = reference_from_entry(entry)
             if not ref or not ref.source_url:
                 continue
+            with_source += 1
             url = media_proxy_url(ref.source_url)
             if url:
                 local = os.path.normpath(ref.local_ref).replace(os.sep, "/")
                 proxied[local] = (url, ref.asset_id)
 
         if not proxied:
+            if with_source:
+                # Loud, never silent: a manifest with real sources that proxies
+                # to nothing means every inline image will reach Telegraph as a
+                # relative ref and be silently dropped (text-only page). This
+                # almost always means TELEPRESS_MEDIA_PROXY_BASE /
+                # TELEPRESS_MEDIA_PROXY_HOSTS are missing in this runtime while
+                # the caller believes proxying is configured.
+                print(
+                    f"Warning: rich-novel manifest carries {with_source} image "
+                    "source(s) but none were proxied — check "
+                    "TELEPRESS_MEDIA_PROXY_BASE / TELEPRESS_MEDIA_PROXY_HOSTS "
+                    "configuration; inline images may be dropped by Telegraph",
+                    flush=True,
+                )
             return content, []
 
         assets = []
