@@ -14,7 +14,7 @@
 TelePress 把 Markdown、纯文本、图片和富媒体内容发布为 Telegraph 页面，
 不关心内容来自哪个平台。
 
-- 纯文本 / Markdown：自动分页并生成上一页、下一页导航
+- 纯文本 / Markdown：约 20,000 字符源文本为一页目标自动分页，保留段落边界，并生成上一页、下一页导航
 - 图片 / ZIP 图集：超限图片使用 libvips 按需压缩后发布为 Telegra.ph 相册（GIF 保持原样）
 - 富媒体（REST）：通过 `/publish/rich-novel` 发布 Markdown + 本地图
 - 图片可在「上传图床」与「通用 CDN 代理」两条路径间选择
