@@ -5,7 +5,7 @@ import json
 import tempfile
 import zipfile
 import shutil
-from telepress.core import TelegraphPublisher
+from telepress.core import MARKDOWN_PAGE_CHUNK_SIZE, TelegraphPublisher
 from telepress.exceptions import ValidationError
 
 
@@ -116,7 +116,7 @@ class TestPublishMarkdown(unittest.TestCase):
     @patch('builtins.open', new_callable=mock_open)
     def test_publish_markdown_large_file_splits(self, mock_file):
         """Test that large markdown file is split into multiple pages."""
-        # Create content larger than SAFE_CHUNK_SIZE (40000)
+        # Create content larger than MARKDOWN_PAGE_CHUNK_SIZE (20_000)
         large_content = "Line\n" * 10000  # ~50000 chars
         mock_file.return_value.read.return_value = large_content
         
@@ -558,8 +558,8 @@ class TestLargeContentLimits(unittest.TestCase):
         """Test that text files are limited to MAX_PAGES."""
         # Create content for ~5 pages to keep test fast
         # (actual MAX_PAGES test would be too slow)
-        # SAFE_CHUNK_SIZE is 10000. 5*20000 = 100000 chars -> 10 pages.
-        content = "x" * (5 * 20000)
+        # 5 pages at MARKDOWN_PAGE_CHUNK_SIZE (20_000).
+        content = "x" * (5 * MARKDOWN_PAGE_CHUNK_SIZE)
         
         with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
             f.write(content)
@@ -570,8 +570,8 @@ class TestLargeContentLimits(unittest.TestCase):
             
             self.publisher.publish_markdown(tmp_path, title="Large")
             
-            # Should create 10 pages (100000 / 10000)
-            self.assertEqual(self.mock_client.create_page.call_count, 10)
+            # One long line, five chunks of MARKDOWN_PAGE_CHUNK_SIZE.
+            self.assertEqual(self.mock_client.create_page.call_count, 5)
         finally:
             os.unlink(tmp_path)
 
@@ -718,9 +718,8 @@ class TestLongLineSplitting(unittest.TestCase):
     @patch('telepress.core.time.sleep')
     def test_long_line_force_split(self, mock_sleep):
         """Test that lines longer than chunk size are force-split."""
-        # Create content with one very long line (30000 chars, > 10000 limit)
-        # SAFE_CHUNK_SIZE is 10000. 30000 chars -> 3 pages.
-        long_line = "x" * 30000
+        # Create content with one very long line; 30_000 chars -> 2 chunks at 20_000.
+        long_line = "x" * (MARKDOWN_PAGE_CHUNK_SIZE + 10_000)
         
         with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
             f.write(long_line)
@@ -731,8 +730,8 @@ class TestLongLineSplitting(unittest.TestCase):
             
             self.publisher.publish_markdown(tmp_path, title="LongLine")
             
-            # Should create 3 pages (30000 / 10000 = 3)
-            self.assertEqual(self.mock_client.create_page.call_count, 3)
+            # Should create 2 pages (20_000 + 10_000)
+            self.assertEqual(self.mock_client.create_page.call_count, 2)
         finally:
             os.unlink(tmp_path)
 
@@ -751,9 +750,8 @@ class TestLongLineSplitting(unittest.TestCase):
             
             self.publisher.publish_markdown(tmp_path, title="MultiLong")
             
-            # Each 25000 char line needs 2 chunks, but with smart splitting
-            # Should create at least 4 pages
-            self.assertGreaterEqual(self.mock_client.create_page.call_count, 4)
+            # Each 25_000 char line needs 2 chunks; ensure splitting still progresses.
+            self.assertGreaterEqual(self.mock_client.create_page.call_count, 6)
         finally:
             os.unlink(tmp_path)
 
