@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.16.4](https://github.com/redtidev1918/TelePress/compare/v0.16.3...v0.16.4) (2026-10-02)
+
+
+### Performance Improvements
+
+* **core:** reduce markdown page-turn frequency ([#64](https://github.com/redtidev1918/TelePress/issues/64)) ([8561d89](https://github.com/redtidev1918/TelePress/commit/8561d89bf030bd5fcc0540c22c03b211a9772fcf))
+
 ## [0.16.3](https://github.com/redtidev1918/TelePress/compare/v0.16.2...v0.16.3) (2026-10-02)
 
 

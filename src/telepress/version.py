@@ -1,3 +1,3 @@
 """TelePress package version."""
 
-__version__ = "0.16.3"  # x-release-please-version
+__version__ = "0.16.4"  # x-release-please-version
