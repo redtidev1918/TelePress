@@ -18,7 +18,7 @@ Public Preview URL
 
 ## 组件
 
-- **Renderer**：Markdown / 纯文本 → Telegraph DOM 节点，并负责分页。
+- **Renderer**：Markdown / 纯文本 → Telegraph DOM 节点，并按约 20,000 字符源文本目标分页。
 - **Media Resolver**：把 `MediaReference` 解析为可公开访问的 URL：
   - Proxy path（allowlist 命中的 https）
   - Upload path（ImageHost fallback）

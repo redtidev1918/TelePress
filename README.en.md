@@ -14,7 +14,7 @@
 TelePress turns Markdown, plain text, images and rich media into Telegraph
 pages, regardless of which platform the content came from.
 
-- Plain text / Markdown: automatic pagination with Prev / Next navigation
+- Plain text / Markdown: automatic pagination with a ~20,000 source-character page target, paragraph boundaries preserved, plus Prev / Next navigation
 - Images / ZIP galleries: oversized images are compressed on demand with libvips and published as a Telegra.ph album (GIFs are preserved)
 - Rich media (REST): publish Markdown + local images via `/publish/rich-novel`
 - Images can be resolved through an **upload host** or a **generic CDN proxy**
