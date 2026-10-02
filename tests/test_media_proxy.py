@@ -136,3 +136,77 @@ class TestGenericMediaProxyUrl(TestCase):
                 proxy_url("https://i.pximg.net/a.png?format=webp"),
                 "https://media.example.com/media/i.pximg.net/a.png?format=webp",
             )
+
+
+class TestApplyProxyManifest(TestCase):
+    """TelegraphPublisher._apply_proxy_manifest: rewrite + loud misconfig warnings."""
+
+    CONTENT = "前文\n![](images/1.jpg)\n中\n![alt](images/2.jpg)\n后文\n"
+    MANIFEST = [
+        {"local": "images/1.jpg", "source": "https://i.pximg.net/img-original/img/1_p0.jpg"},
+        {
+            "local": "images/2.jpg",
+            "sourceUrl": "https://i.pximg.net/img-original/img/2_p0.jpg",
+            "assetId": "pixiv:2:p0",
+        },
+    ]
+
+    def setUp(self):
+        from telepress.core import TelegraphPublisher
+
+        self.publisher = TelegraphPublisher(token="fake", skip_duplicate=False)
+
+    def test_manifest_with_proxy_config_proxies_every_asset(self):
+        with patch.dict(
+            "telepress.media_proxy.os.environ",
+            {
+                "TELEPRESS_MEDIA_PROXY_BASE": "https://proxy.example.com",
+                "TELEPRESS_MEDIA_PROXY_HOSTS": "i.pximg.net",
+            },
+        ):
+            content, assets = self.publisher._apply_proxy_manifest(
+                self.CONTENT, self.MANIFEST
+            )
+        self.assertEqual([a["status"] for a in assets], ["proxied", "proxied"])
+        self.assertEqual(assets[1].get("assetId"), "pixiv:2:p0")
+        self.assertIn(
+            "https://proxy.example.com/media/i.pximg.net/img-original/img/1_p0.jpg",
+            content,
+        )
+        self.assertIn(
+            "https://proxy.example.com/media/i.pximg.net/img-original/img/2_p0.jpg",
+            content,
+        )
+        self.assertNotIn("](images/", content)
+
+    def test_manifest_without_proxy_config_warns_and_keeps_content(self):
+        with patch.dict(
+            "telepress.media_proxy.os.environ",
+            {"TELEPRESS_MEDIA_PROXY_BASE": "", "TELEPRESS_PIXIV_PROXY_BASE": ""},
+        ):
+            with self.assertLogs("telepress.core", level="WARNING") as cm:
+                content, assets = self.publisher._apply_proxy_manifest(
+                    self.CONTENT, self.MANIFEST
+                )
+        self.assertEqual(content, self.CONTENT)
+        self.assertEqual(assets, [])
+        self.assertTrue(
+            any("no media proxy is configured" in line for line in cm.output),
+            cm.output,
+        )
+
+    def test_manifest_allowlist_miss_warns_and_keeps_content(self):
+        with patch.dict(
+            "telepress.media_proxy.os.environ",
+            {
+                "TELEPRESS_MEDIA_PROXY_BASE": "https://proxy.example.com",
+                "TELEPRESS_MEDIA_PROXY_HOSTS": "img.cdn-other.example",
+            },
+        ):
+            with self.assertLogs("telepress.core", level="WARNING") as cm:
+                content, assets = self.publisher._apply_proxy_manifest(
+                    self.CONTENT, self.MANIFEST
+                )
+        self.assertEqual(content, self.CONTENT)
+        self.assertEqual(assets, [])
+        self.assertTrue(any("allowlist" in line for line in cm.output), cm.output)

@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import time
@@ -16,7 +17,12 @@ from .auth import TelegraphAuth
 from .config import load_config
 from .converter import NovelMarkdownRenderer
 from .uploader import ImageUploader
-from .media_proxy import proxy_url as media_proxy_url, reference_from_entry
+from .media_proxy import (
+    proxy_url as media_proxy_url,
+    proxy_base as media_proxy_base,
+    allowed_hosts as media_proxy_allowed_hosts,
+    reference_from_entry,
+)
 from .utils import (
     natural_sort_key, safe_extract_zip, validate_file_size,
     MAX_TEXT_SIZE, MAX_IMAGES_PER_PAGE, MAX_IMAGE_SIZE,
@@ -27,6 +33,8 @@ from .interfaces import IPublisher
 
 # Cache file for deduplication
 CACHE_FILE = os.path.expanduser("~/.telepress_cache.json")
+
+logger = logging.getLogger(__name__)
 
 def _load_cache() -> Dict:
     """Load published content cache."""
@@ -485,16 +493,40 @@ class TelegraphPublisher(IPublisher):
         if not manifest:
             return content, []
         proxied = {}
+        candidates = 0
         for entry in manifest:
             ref = reference_from_entry(entry)
             if not ref or not ref.source_url:
                 continue
+            candidates += 1
             url = media_proxy_url(ref.source_url)
             if url:
                 local = os.path.normpath(ref.local_ref).replace(os.sep, "/")
                 proxied[local] = (url, ref.asset_id)
 
         if not proxied:
+            if candidates:
+                # Loud misconfiguration signal: the caller supplied CDN sources,
+                # but none can be rewritten, so local refs fall through to the
+                # image-host upload path — where callers without local files
+                # (e.g. TXT-only) silently lose every image.
+                if not media_proxy_base():
+                    logger.warning(
+                        "rich manifest carries %d image source(s), but no media "
+                        "proxy is configured (TELEPRESS_MEDIA_PROXY_BASE is "
+                        "unset); image refs fall back to the image-host upload "
+                        "path",
+                        candidates,
+                    )
+                else:
+                    logger.warning(
+                        "rich manifest carries %d image source(s), but none "
+                        "match the media proxy allowlist "
+                        "(TELEPRESS_MEDIA_PROXY_HOSTS=%s); image refs fall "
+                        "back to the image-host upload path",
+                        candidates,
+                        ",".join(sorted(media_proxy_allowed_hosts())) or "<empty>",
+                    )
             return content, []
 
         assets = []
