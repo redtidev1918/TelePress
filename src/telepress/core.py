@@ -28,6 +28,12 @@ from .interfaces import IPublisher
 # Cache file for deduplication
 CACHE_FILE = os.path.expanduser("~/.telepress_cache.json")
 
+# Source-text target for one Markdown page. Telegraph accepts larger pages, but
+# generated node JSON can be roughly 2-3x the source length. 20k keeps a
+# comfortable safety margin while substantially reducing page-turn frequency
+# compared with the previous 10k split.
+MARKDOWN_PAGE_CHUNK_SIZE = 20_000
+
 def _load_cache() -> Dict:
     """Load published content cache."""
     if os.path.exists(CACHE_FILE):
@@ -50,6 +56,42 @@ def _content_hash(content: str) -> str:
     """Generate hash for content deduplication."""
     return hashlib.sha256(content.encode('utf-8')).hexdigest()[:16]
 
+
+def _split_markdown_chunks(content: str, chunk_size: int = MARKDOWN_PAGE_CHUNK_SIZE) -> List[str]:
+    """Split markdown source text near ``chunk_size`` without cutting short lines.
+
+    Lines longer than one chunk are force-split so publication can still make
+    progress. Short lines are kept together until the next line would exceed the
+    page target, which preserves paragraph structure for normal novel prose.
+    """
+    if len(content) <= chunk_size:
+        return [content]
+
+    chunks = []
+    current_chunk = []
+    current_len = 0
+
+    for line in content.splitlines(keepends=True):
+        while len(line) > chunk_size:
+            if current_chunk:
+                chunks.append("".join(current_chunk))
+                current_chunk = []
+                current_len = 0
+            chunks.append(line[:chunk_size])
+            line = line[chunk_size:]
+
+        if current_len + len(line) > chunk_size and current_chunk:
+            chunks.append("".join(current_chunk))
+            current_chunk = []
+            current_len = 0
+
+        current_chunk.append(line)
+        current_len += len(line)
+
+    if current_chunk:
+        chunks.append("".join(current_chunk))
+
+    return chunks
 
 def _patch_telegraph_api(api_url: str):
     """Monkey patch TelegraphApi to support custom base URL."""
@@ -384,38 +426,13 @@ class TelegraphPublisher(IPublisher):
             content, os.path.dirname(os.path.abspath(file_path))
         )
 
-        # Split content if too large
-        # Telegraph limit is ~64KB JSON. After markdown conversion, text expands.
-        # Plain text with line breaks expands ~2x, so use 10KB to be safe.
-        SAFE_CHUNK_SIZE = 10000 
-        
-        chunks = []
-        if len(content) > SAFE_CHUNK_SIZE:
+        # Telegraph's API limit is roughly 64KB of node JSON. Markdown conversion
+        # expands source text, so use MARKDOWN_PAGE_CHUNK_SIZE (20k chars) as a
+        # conservative source target. This halves the number of page turns for
+        # typical novel uploads while preserving line/paragraph boundaries.
+        if len(content) > MARKDOWN_PAGE_CHUNK_SIZE:
             print(f"Text too large ({len(content)} chars). Splitting...")
-            current_chunk = []
-            current_len = 0
-            # Split by lines to preserve markdown structure
-            for line in content.splitlines(keepends=True):
-                # Handle very long lines by force-splitting
-                while len(line) > SAFE_CHUNK_SIZE:
-                    if current_chunk:
-                        chunks.append("".join(current_chunk))
-                        current_chunk = []
-                        current_len = 0
-                    # Split long line at chunk size
-                    chunks.append(line[:SAFE_CHUNK_SIZE])
-                    line = line[SAFE_CHUNK_SIZE:]
-                
-                if current_len + len(line) > SAFE_CHUNK_SIZE and current_chunk:
-                    chunks.append("".join(current_chunk))
-                    current_chunk = []
-                    current_len = 0
-                current_chunk.append(line)
-                current_len += len(line)
-            if current_chunk:
-                chunks.append("".join(current_chunk))
-        else:
-            chunks = [content]
+        chunks = _split_markdown_chunks(content)
 
         total_parts = len(chunks)
         pages_info = []
