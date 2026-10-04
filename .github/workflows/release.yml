@@ -30,7 +30,7 @@ jobs:
     # check on every release PR. Self-healing: once RELEASE_PLEASE_TOKEN (a real user
     # PAT) authors the release PR, this guard no longer matches and CI returns.
     if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && (github.event_name != 'workflow_dispatch' || !(github.event.inputs.repair == 'true' && github.event.inputs.stage == 'pypi'))
-    uses: redtidev1918/releasegraph/.github/workflows/reusable-release.yml@a369f67e12a96ff400e01203b4fdf28d62ef02ac # ReleaseGraph v1.5.17
+    uses: redtidev1918/releasegraph/.github/workflows/reusable-release.yml@a3c070f1b2ea89784027fd09e71c845fb0329923 # ReleaseGraph v1.5.18
     with:
       version: ${{ inputs.version || '' }}
       dry_run: ${{ github.event_name == 'pull_request' || inputs.dry_run || false }}
@@ -128,7 +128,7 @@ jobs:
       && (needs.publish-pypi.result == 'success' || needs.publish-pypi.result == 'skipped')
       && github.event_name != 'pull_request'
       && !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true')
-    uses: redtidev1918/releasegraph/.github/workflows/reusable-acknowledge.yml@a369f67e12a96ff400e01203b4fdf28d62ef02ac # ReleaseGraph v1.5.17
+    uses: redtidev1918/releasegraph/.github/workflows/reusable-acknowledge.yml@a3c070f1b2ea89784027fd09e71c845fb0329923 # ReleaseGraph v1.5.18
     with:
       version: ${{ needs.release.outputs.version }}
     secrets: inherit
