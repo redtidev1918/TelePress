@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.17.0](https://github.com/redtidev1918/TelePress/compare/v0.16.4...v0.17.0) (2026-10-04)
+
+
+### Features
+
+* **telegraph:** support author metadata ([#67](https://github.com/redtidev1918/TelePress/issues/67)) ([d43afb0](https://github.com/redtidev1918/TelePress/commit/d43afb07dcdfb959ec428b7f2fbca4fce8892e45))
+
 ## [0.16.4](https://github.com/redtidev1918/TelePress/compare/v0.16.3...v0.16.4) (2026-10-02)
 
 
