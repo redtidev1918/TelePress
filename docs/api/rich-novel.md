@@ -20,6 +20,8 @@
 | `title` | string | 否 | 页面标题，缺省 `Novel` |
 | `token` | string | 否 | 显式 Telegraph token |
 | `manifest` | string | 否 | JSON 数组，见下 |
+| `author_name` | string | 否 | Telegraph 页面标题下方显示的作者名称 |
+| `author_url` | string | 否 | 点击作者名称后打开的 `http`/`https` URL |
 
 ## manifest（可选）
 
@@ -61,5 +63,7 @@ curl -X POST http://127.0.0.1:8000/publish/rich-novel \
   -F "images=@images/001.jpg" \
   -F "images=@images/002.jpg" \
   -F "title=富媒体小说" \
+  -F "author_name=Alice" \
+  -F "author_url=https://example.com/alice" \
   -F 'manifest=[{"local":"images/001.jpg","source":"https://cdn.example.com/full/001.jpg"}]'
 ```

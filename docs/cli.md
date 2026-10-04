@@ -15,7 +15,9 @@ telepress install-rclone          # 帮助安装 Rclone
 ## publish / 直接发布
 
 ```
-telepress publish article.md --title "我的文章" --token ...   --image-size-limit 10 --no-compress --api-url http://localhost:9009
+telepress publish article.md --title "我的文章" --token ... \
+  --author-name "Alice" --author-url https://example.com/alice \
+  --image-size-limit 10 --no-compress --api-url http://localhost:9009
 ```
 
 | 参数 | 说明 |
@@ -26,6 +28,8 @@ telepress publish article.md --title "我的文章" --token ...   --image-size-l
 | `--image-size-limit` | 最大图片大小（MiB），默认 5 |
 | `--no-compress` | 关闭自动压缩超限图片 |
 | `--api-url` | 兼容 Telegraph 的自定义 API 地址 |
+| `--author-name` | Telegraph 页面标题下方显示的作者名称 |
+| `--author-url` | 点击作者名称后打开的 URL |
 
 ## configure / check
 

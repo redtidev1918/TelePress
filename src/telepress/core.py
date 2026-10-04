@@ -7,6 +7,7 @@ import zipfile
 import json
 import hashlib
 from typing import Optional, List, Dict
+from urllib.parse import urlparse
 try:
     from telegraph.api import TelegraphApi
 except ImportError:
@@ -92,6 +93,36 @@ def _split_markdown_chunks(content: str, chunk_size: int = MARKDOWN_PAGE_CHUNK_S
         chunks.append("".join(current_chunk))
 
     return chunks
+
+def _validate_author_metadata(author_name: Optional[str], author_url: Optional[str]) -> None:
+    """Validate optional Telegraph author metadata."""
+    if author_name is not None and not isinstance(author_name, str):
+        raise ValidationError("author_name must be a string")
+
+    if author_url is None:
+        return
+    if not isinstance(author_url, str):
+        raise ValidationError("author_url must be a string")
+    if any(char.isspace() for char in author_url):
+        raise ValidationError("author_url must be a valid URL")
+
+    parsed = urlparse(author_url)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        raise ValidationError("author_url must be a valid URL")
+
+
+def _author_metadata_kwargs(
+    author_name: Optional[str], author_url: Optional[str]
+) -> Dict[str, str]:
+    """Return only the author fields explicitly supplied by the caller."""
+    _validate_author_metadata(author_name, author_url)
+    kwargs: Dict[str, str] = {}
+    if author_name is not None:
+        kwargs['author_name'] = author_name
+    if author_url is not None:
+        kwargs['author_url'] = author_url
+    return kwargs
+
 
 def _patch_telegraph_api(api_url: str):
     """Monkey patch TelegraphApi to support custom base URL."""
@@ -201,7 +232,13 @@ class TelegraphPublisher(IPublisher):
         """Allow callers to inject a configured or test uploader."""
         self._uploader = value
 
-    def publish(self, file_path: str, title: Optional[str] = None) -> str:
+    def publish(
+        self,
+        file_path: str,
+        title: Optional[str] = None,
+        author_name: Optional[str] = None,
+        author_url: Optional[str] = None,
+    ) -> str:
         """
         Publishes a file (md, txt, image, zip) to Telegraph.
         
@@ -214,6 +251,8 @@ class TelegraphPublisher(IPublisher):
             FileNotFoundError: If file doesn't exist
             ValidationError: If file type not supported or file too large
         """
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
+
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -227,11 +266,11 @@ class TelegraphPublisher(IPublisher):
         
         # Validate file type and route to appropriate handler
         if ext in ALLOWED_ARCHIVE_EXTENSIONS:
-            return self.publish_zip_gallery(file_path, title)
+            return self.publish_zip_gallery(file_path, title, **author_kwargs)
         elif ext in self.IMAGE_EXTENSIONS:
-            return self.publish_image(file_path, title)
+            return self.publish_image(file_path, title, **author_kwargs)
         elif ext in ALLOWED_TEXT_EXTENSIONS:
-            return self.publish_markdown(file_path, title)
+            return self.publish_markdown(file_path, title, **author_kwargs)
         else:
             # Unsupported file type
             supported = sorted(ALLOWED_TEXT_EXTENSIONS | self.IMAGE_EXTENSIONS | ALLOWED_ARCHIVE_EXTENSIONS)
@@ -296,11 +335,17 @@ class TelegraphPublisher(IPublisher):
 
         return self.MARKDOWN_LOCAL_IMG_RE.sub(_replace, content), assets
 
-    def _link_pages(self, pages_info: List[Dict]):
+    def _link_pages(
+        self,
+        pages_info: List[Dict],
+        author_name: Optional[str] = None,
+        author_url: Optional[str] = None,
+    ):
         """
         Helper to add navigation links (Prev/Next/Index) to a list of pages.
         Robust: retries on failure, verifies links are correct.
         """
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
         total_parts = len(pages_info)
         if total_parts <= 1:
             return
@@ -363,7 +408,8 @@ class TelegraphPublisher(IPublisher):
                         self.client.edit_page(
                             path=info['path'],
                             title=info['title'],
-                            content=new_content
+                            content=new_content,
+                            **author_kwargs,
                         )
                         success = True
                         break
@@ -386,7 +432,13 @@ class TelegraphPublisher(IPublisher):
         if failed_links:
             print(f"Note: Navigation failed for parts: {failed_links}. Content is still accessible.")
 
-    def publish_markdown(self, file_path: str, title: str) -> str:
+    def publish_markdown(
+        self,
+        file_path: str,
+        title: str,
+        author_name: Optional[str] = None,
+        author_url: Optional[str] = None,
+    ) -> str:
         """
         Publish a markdown/text file to Telegraph.
         Large files are automatically split into multiple pages.
@@ -395,6 +447,8 @@ class TelegraphPublisher(IPublisher):
         - Maximum ~4 million characters (100 pages × 40000 chars)
         - Files exceeding this will be truncated with a warning
         """
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
+
         # Validate file can be read as text
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -410,7 +464,12 @@ class TelegraphPublisher(IPublisher):
             raise ValidationError("File is empty or contains only whitespace")
         
         # Generate content key for deduplication
-        content_key = _content_hash(content + title) if self.skip_duplicate else None
+        content_key = None
+        if self.skip_duplicate:
+            cache_material = content + title
+            if author_name is not None or author_url is not None:
+                cache_material += f"\0{author_name!r}\0{author_url!r}"
+            content_key = _content_hash(cache_material)
         
         # Check for duplicate content
         if content_key and content_key in self._cache:
@@ -450,7 +509,11 @@ class TelegraphPublisher(IPublisher):
             max_retries = 5
             for attempt in range(max_retries):
                 try:
-                    response = self.client.create_page(title=page_title, content=nodes)
+                    response = self.client.create_page(
+                        title=page_title,
+                        content=nodes,
+                        **author_kwargs,
+                    )
                     pages_info.append({
                         'path': response['path'],
                         'url': response['url'],
@@ -480,7 +543,11 @@ class TelegraphPublisher(IPublisher):
                         time.sleep(2)
 
         # Link pages if multiple
-        self._link_pages(pages_info)
+        self._link_pages(
+            pages_info,
+            author_name=author_name,
+            author_url=author_url,
+        )
 
         result_url = pages_info[0]['url'] if pages_info else ""
         
@@ -549,7 +616,14 @@ class TelegraphPublisher(IPublisher):
 
         return self.MARKDOWN_LOCAL_IMG_RE.sub(_replace, content), assets
 
-    def publish_rich_markdown(self, file_path: str, title: str, manifest=None) -> Dict:
+    def publish_rich_markdown(
+        self,
+        file_path: str,
+        title: str,
+        manifest=None,
+        author_name: Optional[str] = None,
+        author_url: Optional[str] = None,
+    ) -> Dict:
         """
         Publish a rich-novel markdown file with local image assets.
 
@@ -566,6 +640,8 @@ class TelegraphPublisher(IPublisher):
         legacy ``TELEPRESS_PIXIV_PROXY_BASE`` alias), matching hosts are rewritten
         to the proxy and reported as ``status: "proxied"`` instead of being uploaded.
         """
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
+
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -585,7 +661,7 @@ class TelegraphPublisher(IPublisher):
         try:
             with os.fdopen(fd, 'w', encoding='utf-8') as f:
                 f.write(content)
-            url = self.publish_markdown(tmp_path, title)
+            url = self.publish_markdown(tmp_path, title, **author_kwargs)
         finally:
             try:
                 os.unlink(tmp_path)
@@ -595,18 +671,35 @@ class TelegraphPublisher(IPublisher):
         return {'url': url, 'assets': assets}
 
 
-    def publish_image(self, image_path: str, title: str) -> str:
+    def publish_image(
+        self,
+        image_path: str,
+        title: str,
+        author_name: Optional[str] = None,
+        author_url: Optional[str] = None,
+    ) -> str:
         """Publish a single image to Telegraph."""
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
         url = self.uploader.upload(
             image_path,
             auto_compress=self.auto_compress,
             max_size=self.max_image_size
         )
         content = [{'tag': 'img', 'attrs': {'src': url}}]
-        response = self.client.create_page(title=title, content=content)
+        response = self.client.create_page(
+            title=title,
+            content=content,
+            **author_kwargs,
+        )
         return response['url']
 
-    def publish_text(self, content: str, title: str) -> str:
+    def publish_text(
+        self,
+        content: str,
+        title: str,
+        author_name: Optional[str] = None,
+        author_url: Optional[str] = None,
+    ) -> str:
         """
         Publish text/markdown content directly to Telegraph.
         
@@ -623,6 +716,8 @@ class TelegraphPublisher(IPublisher):
             >>> publisher = TelegraphPublisher()
             >>> url = publisher.publish_text("# Hello\n\nWorld!", title="Test")
         """
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
+
         import tempfile
         import os
         
@@ -632,7 +727,7 @@ class TelegraphPublisher(IPublisher):
             tmp_path = f.name
         
         try:
-            return self.publish_markdown(tmp_path, title)
+            return self.publish_markdown(tmp_path, title, **author_kwargs)
         finally:
             os.unlink(tmp_path)
 
@@ -640,7 +735,9 @@ class TelegraphPublisher(IPublisher):
         self,
         zip_path: str,
         title: str,
-        footer_nodes: Optional[List[Dict]] = None
+        footer_nodes: Optional[List[Dict]] = None,
+        author_name: Optional[str] = None,
+        author_url: Optional[str] = None,
     ) -> str:
         """
         Publish a zip file containing images as a gallery.
@@ -656,6 +753,8 @@ class TelegraphPublisher(IPublisher):
         - Maximum 5000 images (50 pages × 100 images)
         - Images exceeding this will be truncated with a warning
         """
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
+
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 safe_extract_zip(zip_path, temp_dir)
@@ -739,7 +838,8 @@ class TelegraphPublisher(IPublisher):
                     response = self.client.create_page(
                         title=page_title,
                         html_content=None,
-                        content=content if content else [{'tag': 'p', 'children': ['(Empty Page)']}]
+                        content=content if content else [{'tag': 'p', 'children': ['(Empty Page)']}],
+                        **author_kwargs,
                     )
                     pages_info.append({
                         'path': response['path'],
@@ -751,7 +851,11 @@ class TelegraphPublisher(IPublisher):
                     raise RuntimeError(f"Failed to publish Part {part_num}: {e}")
 
             # Pass 2: Update pages with navigation
-            self._link_pages(pages_info)
+            self._link_pages(
+                pages_info,
+                author_name=author_name,
+                author_url=author_url,
+            )
 
             return pages_info[0]['url'] if pages_info else ""
 
@@ -759,7 +863,9 @@ class TelegraphPublisher(IPublisher):
         self,
         image_urls: List[str],
         title: str,
-        footer_nodes: Optional[List[Dict]] = None
+        footer_nodes: Optional[List[Dict]] = None,
+        author_name: Optional[str] = None,
+        author_url: Optional[str] = None,
     ) -> str:
         """
         Publish a gallery using existing image URLs (no upload needed).
@@ -772,6 +878,8 @@ class TelegraphPublisher(IPublisher):
                 warnings) appended to the first page only, above the
                 Prev/Next navigation links.
         """
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
+
         if not image_urls:
             raise ValidationError("No image URLs provided")
         
@@ -808,7 +916,8 @@ class TelegraphPublisher(IPublisher):
                 response = self.client.create_page(
                     title=page_title,
                     html_content=None,
-                    content=content if content else [{'tag': 'p', 'children': ['(Empty Page)']}]
+                    content=content if content else [{'tag': 'p', 'children': ['(Empty Page)']}],
+                    **author_kwargs,
                 )
                 pages_info.append({
                     'path': response['path'],
@@ -820,6 +929,10 @@ class TelegraphPublisher(IPublisher):
                 raise RuntimeError(f"Failed to publish Part {part_num}: {e}")
 
         # Link pages
-        self._link_pages(pages_info)
+        self._link_pages(
+            pages_info,
+            author_name=author_name,
+            author_url=author_url,
+        )
 
         return pages_info[0]['url'] if pages_info else ""

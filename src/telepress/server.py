@@ -51,6 +51,8 @@ class TextPublishRequest(BaseModel):
     content: str
     title: str
     token: Optional[str] = None
+    author_name: Optional[str] = None
+    author_url: Optional[str] = None
 
 class PublishResponse(BaseModel):
     url: str
@@ -78,6 +80,18 @@ def get_publisher(token: Optional[str] = None):
         return TelegraphPublisher(token=token)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _author_metadata_kwargs(
+    author_name: Optional[str], author_url: Optional[str]
+) -> Dict[str, str]:
+    """Return only explicitly supplied Telegraph author fields."""
+    kwargs: Dict[str, str] = {}
+    if author_name is not None:
+        kwargs['author_name'] = author_name
+    if author_url is not None:
+        kwargs['author_url'] = author_url
+    return kwargs
 
 
 def _write_text_temp(content: str) -> str:
@@ -152,7 +166,9 @@ def _publish_gallery_worker(
     link: Optional[str],
     spoiler: Optional[str],
     token: Optional[str],
-    media_fetched: Optional[list] = None
+    media_fetched: Optional[list] = None,
+    author_name: Optional[str] = None,
+    author_url: Optional[str] = None,
 ) -> Dict:
     """
     Save the uploaded images in order, pack them into a zip, and publish them
@@ -223,8 +239,12 @@ def _publish_gallery_worker(
         footer = _build_gallery_footer(tags, link, spoiler)
         pub_title = title or os.path.splitext(os.path.basename(paths[0]))[0]
         publisher = get_publisher(token)
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
         url = publisher.publish_zip_gallery(
-            zip_path, title=pub_title, footer_nodes=footer
+            zip_path,
+            title=pub_title,
+            footer_nodes=footer,
+            **author_kwargs,
         )
         return {'url': url, 'files': len(paths)}
     finally:
@@ -237,6 +257,8 @@ def _publish_rich_novel_worker(
     title: Optional[str],
     token: Optional[str],
     manifest: Optional[list] = None,
+    author_name: Optional[str] = None,
+    author_url: Optional[str] = None,
 ) -> Dict:
     """
     Save an uploaded markdown + image set, upload the images, render Telegraph
@@ -265,8 +287,12 @@ def _publish_rich_novel_worker(
                 shutil.copyfileobj(upload.file, out)
 
         publisher = get_publisher(token)
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
         return publisher.publish_rich_markdown(
-            md_path, title=title or 'Novel', manifest=manifest
+            md_path,
+            title=title or 'Novel',
+            manifest=manifest,
+            **author_kwargs,
         )
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -286,8 +312,12 @@ async def publish_text(request: TextPublishRequest):
         # Publishing performs synchronous HTTP requests and may wait for rate
         # limits, so keep it off the async event loop.
         publisher = await run_in_threadpool(get_publisher, request.token)
+        author_kwargs = _author_metadata_kwargs(request.author_name, request.author_url)
         url = await run_in_threadpool(
-            publisher.publish, tmp_path, title=request.title
+            publisher.publish,
+            tmp_path,
+            title=request.title,
+            **author_kwargs,
         )
         return PublishResponse(url=url)
         
@@ -303,7 +333,9 @@ async def publish_text(request: TextPublishRequest):
 async def publish_file(
     file: UploadFile = File(...),
     title: Optional[str] = Form(None),
-    token: Optional[str] = Form(None)
+    token: Optional[str] = Form(None),
+    author_name: Optional[str] = Form(None),
+    author_url: Optional[str] = Form(None),
 ):
     """
     Upload a file (md, txt, zip, image) to be processed and published.
@@ -318,9 +350,13 @@ async def publish_file(
         
         # If no title provided, use filename from upload
         pub_title = title if title else file.filename
+        author_kwargs = _author_metadata_kwargs(author_name, author_url)
         
         url = await run_in_threadpool(
-            publisher.publish, tmp_path, title=pub_title
+            publisher.publish,
+            tmp_path,
+            title=pub_title,
+            **author_kwargs,
         )
         return PublishResponse(url=url)
         
@@ -340,7 +376,9 @@ async def publish_gallery(
     link: Optional[str] = Form(None),
     spoiler: Optional[str] = Form(None),
     token: Optional[str] = Form(None),
-    media: Optional[str] = Form(None)
+    media: Optional[str] = Form(None),
+    author_name: Optional[str] = Form(None),
+    author_url: Optional[str] = Form(None),
 ):
     """
     Upload multiple image files and publish them as a Telegra.ph gallery.
@@ -382,7 +420,7 @@ async def publish_gallery(
     try:
         result = await run_in_threadpool(
             _publish_gallery_worker, files, title, tags, link, spoiler, token,
-            parsed_media or [],
+            parsed_media or [], author_name, author_url,
         )
         return GalleryPublishResponse(
             url=result['url'], files=result['files']
@@ -398,7 +436,9 @@ async def publish_rich_novel(
     images: Optional[List[UploadFile]] = File(None),
     title: Optional[str] = Form(None),
     token: Optional[str] = Form(None),
-    manifest: Optional[str] = Form(None)
+    manifest: Optional[str] = Form(None),
+    author_name: Optional[str] = Form(None),
+    author_url: Optional[str] = Form(None),
 ):
     """
     Publish a rich novel (markdown + local images) to Telegraph.
@@ -430,7 +470,7 @@ async def publish_rich_novel(
     try:
         result = await run_in_threadpool(
             _publish_rich_novel_worker, md, images or [], title, token,
-            parsed_manifest,
+            parsed_manifest, author_name, author_url,
         )
         return RichNovelResponse(url=result['url'], assets=result.get('assets', []))
     except TelePressError as e:

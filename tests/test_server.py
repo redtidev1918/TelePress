@@ -63,6 +63,25 @@ class TestServerEndpoints(unittest.TestCase):
         MockPublisher.assert_called_with(token="custom_token")
 
     @patch('telepress.server.TelegraphPublisher')
+    def test_publish_text_with_author_metadata(self, MockPublisher):
+        """Test publishing text with Telegraph author metadata."""
+        mock_instance = MagicMock()
+        mock_instance.publish.return_value = 'http://telegra.ph/result'
+        MockPublisher.return_value = mock_instance
+
+        response = self.client.post("/publish/text", json={
+            "content": "Content",
+            "title": "Title",
+            "author_name": "Alice",
+            "author_url": "https://example.com/alice",
+        })
+
+        self.assertEqual(response.status_code, 200)
+        call = mock_instance.publish.call_args
+        self.assertEqual(call.kwargs['author_name'], 'Alice')
+        self.assertEqual(call.kwargs['author_url'], 'https://example.com/alice')
+
+    @patch('telepress.server.TelegraphPublisher')
     def test_publish_file_markdown(self, MockPublisher):
         """Test uploading and publishing a markdown file."""
         mock_instance = MagicMock()
@@ -110,6 +129,35 @@ class TestServerEndpoints(unittest.TestCase):
             # Check that publish was called with filename as title
             call_args = mock_instance.publish.call_args
             self.assertEqual(call_args[1]['title'], 'my_document.md')
+        finally:
+            os.unlink(tmp_path)
+
+    @patch('telepress.server.TelegraphPublisher')
+    def test_publish_file_with_author_metadata(self, MockPublisher):
+        """Test uploading a file with Telegraph author metadata."""
+        mock_instance = MagicMock()
+        mock_instance.publish.return_value = 'http://telegra.ph/file-result'
+        MockPublisher.return_value = mock_instance
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            f.write("# Test Document")
+            tmp_path = f.name
+
+        try:
+            with open(tmp_path, 'rb') as f:
+                response = self.client.post(
+                    "/publish/file",
+                    files={"file": ("test.md", f, "text/markdown")},
+                    data={
+                        "author_name": "Alice",
+                        "author_url": "https://example.com/alice",
+                    },
+                )
+
+            self.assertEqual(response.status_code, 200)
+            call = mock_instance.publish.call_args
+            self.assertEqual(call.kwargs['author_name'], 'Alice')
+            self.assertEqual(call.kwargs['author_url'], 'https://example.com/alice')
         finally:
             os.unlink(tmp_path)
 
@@ -213,10 +261,21 @@ class TestServerModels(unittest.TestCase):
         self.assertEqual(req.content, "Content")
         self.assertEqual(req.title, "Title")
         self.assertIsNone(req.token)
+        self.assertIsNone(req.author_name)
+        self.assertIsNone(req.author_url)
         
         # With optional token
         req = TextPublishRequest(content="Content", title="Title", token="tok")
         self.assertEqual(req.token, "tok")
+
+        req = TextPublishRequest(
+            content="Content",
+            title="Title",
+            author_name="Alice",
+            author_url="https://example.com/alice",
+        )
+        self.assertEqual(req.author_name, "Alice")
+        self.assertEqual(req.author_url, "https://example.com/alice")
 
     def test_publish_response_model(self):
         """Test response model."""
@@ -312,6 +371,23 @@ class TestGalleryEndpoint(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         call_args = self.mock_publisher_instance.publish_zip_gallery.call_args
         self.assertEqual(call_args[1]['title'], 'p0')
+
+    def test_publish_gallery_with_author_metadata(self):
+        """Test that gallery requests forward author metadata."""
+        response = self.client.post(
+            "/publish/gallery",
+            files=self._gallery_files(),
+            data={
+                "title": "My Gallery",
+                "author_name": "Alice",
+                "author_url": "https://example.com/alice",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        call_args = self.mock_publisher_instance.publish_zip_gallery.call_args
+        self.assertEqual(call_args[1]['author_name'], 'Alice')
+        self.assertEqual(call_args[1]['author_url'], 'https://example.com/alice')
 
     def test_publish_gallery_without_metadata_no_footer(self):
         """Test that no metadata produces an empty footer."""

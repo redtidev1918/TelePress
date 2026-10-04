@@ -14,6 +14,34 @@ publisher = TelegraphPublisher(image_size_limit=10)
 gallery_url = publisher.publish("gallery.zip", title="图集")
 ```
 
+### Telegraph 作者信息
+
+发布时可选传入 `author_name` 与 `author_url`。TelePress 会把它们作为正式
+Telegraph `createPage` 字段传递，不会把作者名称插入正文：
+
+```python
+url = publish(
+    "article.md",
+    title="My Article",
+    author_name="Alice",
+    author_url="https://example.com/alice",
+)
+
+# 直接发布文本同样支持
+text_url = publish_text(
+    "# Hello\n\nWorld",
+    title="Hello",
+    author_name="Alice",
+    author_url="https://example.com/alice",
+)
+```
+
+- `author_name` 显示在 Telegraph 页面标题下方。
+- `author_url` 是点击作者名称后打开的链接。
+- 两者均可独立省略；URL 必须是有效的 `http`/`https` URL。
+- 不传作者字段时 request 与旧版本一致，不会自动推断 Telegram、Pixiv 或
+  其他业务平台的作者信息。
+
 ## 图片上传
 
 ```python

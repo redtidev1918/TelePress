@@ -24,6 +24,8 @@
 | `spoiler` | truthy | 否 | 成人/剧透提示（`1` / `true` / `yes` / `on`） |
 | `token` | string | 否 | 显式 Telegraph token |
 | `media` | string | 否 | JSON 数组（需开启远程 manifest） |
+| `author_name` | string | 否 | Telegraph 页面标题下方显示的作者名称 |
+| `author_url` | string | 否 | 点击作者名称后打开的 `http`/`https` URL |
 
 ## 默认路径（稳定契约）
 
@@ -68,7 +70,9 @@ curl -X POST http://127.0.0.1:8000/publish/gallery \
   -F "title=相册标题" \
   -F "tags=artwork, illustration" \
   -F "link=https://example.com/artworks/123456" \
-  -F "spoiler=true"
+  -F "spoiler=true" \
+  -F "author_name=Alice" \
+  -F "author_url=https://example.com/alice"
 
 # 远程 media manifest
 curl -X POST http://127.0.0.1:8000/publish/gallery \

@@ -17,6 +17,8 @@ Upload one file (markdown / txt / zip / image) and publish it.
 | `file` | file | yes | File to publish |
 | `title` | string | no | Title; defaults to filename |
 | `token` | string | no | Explicit Telegraph token |
+| `author_name` | string | no | Author name displayed below the page title |
+| `author_url` | string | no | `http`/`https` URL opened when the author name is clicked |
 
 ## Response
 
@@ -29,5 +31,7 @@ Upload one file (markdown / txt / zip / image) and publish it.
 ```bash
 curl -X POST http://127.0.0.1:8000/publish/file \
   -F "file=@article.md" \
-  -F "title=Example"
+  -F "title=Example" \
+  -F "author_name=Alice" \
+  -F "author_url=https://example.com/alice"
 ```
