@@ -29,6 +29,10 @@ post-release-docs（自动刷新下载页 + 重建 Pages）
 
 不需要本地 `git tag` 或 `twine upload`。
 
+ReleaseGraph 默认保留已经发布的 stable Release；`.release-policy.yml` 中的
+`retention.pruneStable: true` 明确开启回收，因此在后续发版或强制重跑 Release
+workflow 时，只保留最新 stable Release 对象。历史 Git tag 不会删除。
+
 ## 一次性仓库设置
 
 - GitHub Actions 允许创建 PR 与请求写权限。

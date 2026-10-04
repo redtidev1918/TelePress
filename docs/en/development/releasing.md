@@ -29,6 +29,11 @@ post-release-docs（refresh download page + rebuild Pages）
 
 No local tag or `twine upload` is needed.
 
+ReleaseGraph keeps published stable Releases by default. The repository policy
+sets `retention.pruneStable: true`, so a later release or forced Release
+workflow run recycles older stable Release objects while retaining the latest
+one. Historical Git tags are never deleted.
+
 ## One-time repository setup
 
 - Allow Actions to create pull requests and request write permissions.
