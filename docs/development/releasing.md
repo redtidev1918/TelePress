@@ -33,6 +33,13 @@ ReleaseGraph 默认保留已经发布的 stable Release；`.release-policy.yml` 
 `retention.pruneStable: true` 明确开启回收，因此在后续发版或强制重跑 Release
 workflow 时，只保留最新 stable Release 对象。历史 Git tag 不会删除。
 
+只清理旧 Release、不重新构建或发布时，可手动运行：
+
+```bash
+gh workflow run release.yml -f retention_only=true
+gh workflow run release.yml -f retention_only=true -f dry_run=true  # 仅预览
+```
+
 ## 一次性仓库设置
 
 - GitHub Actions 允许创建 PR 与请求写权限。

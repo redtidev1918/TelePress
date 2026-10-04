@@ -13,6 +13,7 @@ on:
       force: {description: "Rerun a healthy version", required: false, default: false, type: boolean}
       repair: {description: "Repair the current incomplete version", required: false, default: false, type: boolean}
       stage: {description: "Recovery stage label", required: false, default: all, type: string}
+      retention_only: {description: "Apply only release retention; do not build or publish", required: false, default: false, type: boolean}
 
 permissions:
   contents: write
@@ -29,13 +30,14 @@ jobs:
     # check on every release PR. Self-healing: once RELEASE_PLEASE_TOKEN (a real user
     # PAT) authors the release PR, this guard no longer matches and CI returns.
     if: (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'github-actions[bot]') && (github.event_name != 'workflow_dispatch' || !(github.event.inputs.repair == 'true' && github.event.inputs.stage == 'pypi'))
-    uses: redtidev1918/releasegraph/.github/workflows/reusable-release.yml@6d6f4a4a0a7631b55ccc20b4b1f0e89969484b61 # ReleaseGraph v1.5.14
+    uses: redtidev1918/releasegraph/.github/workflows/reusable-release.yml@a369f67e12a96ff400e01203b4fdf28d62ef02ac # ReleaseGraph v1.5.17
     with:
       version: ${{ inputs.version || '' }}
       dry_run: ${{ github.event_name == 'pull_request' || inputs.dry_run || false }}
       force: ${{ inputs.force || false }}
       repair: ${{ github.event_name == 'pull_request' || inputs.repair || false }}
       stage: ${{ inputs.stage || 'all' }}
+      retention_only: ${{ inputs.retention_only || false }}
     secrets: inherit
 
   publish-pypi:
@@ -126,7 +128,7 @@ jobs:
       && (needs.publish-pypi.result == 'success' || needs.publish-pypi.result == 'skipped')
       && github.event_name != 'pull_request'
       && !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true')
-    uses: redtidev1918/releasegraph/.github/workflows/reusable-acknowledge.yml@ac8f202d5835861ffde472aa44a484c9099dc0fe
+    uses: redtidev1918/releasegraph/.github/workflows/reusable-acknowledge.yml@a369f67e12a96ff400e01203b4fdf28d62ef02ac # ReleaseGraph v1.5.17
     with:
       version: ${{ needs.release.outputs.version }}
     secrets: inherit

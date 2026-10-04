@@ -34,6 +34,13 @@ sets `retention.pruneStable: true`, so a later release or forced Release
 workflow run recycles older stable Release objects while retaining the latest
 one. Historical Git tags are never deleted.
 
+To clean old Release objects without rebuilding or publishing:
+
+```bash
+gh workflow run release.yml -f retention_only=true
+gh workflow run release.yml -f retention_only=true -f dry_run=true  # preview only
+```
+
 ## One-time repository setup
 
 - Allow Actions to create pull requests and request write permissions.
