@@ -24,6 +24,8 @@ Publish multiple images as a Telegra.ph album:
 | `spoiler` | truthy | no | adult/spoiler marker (`1` / `true` / `yes` / `on`) |
 | `token` | string | no | explicit Telegraph token |
 | `media` | string | no | JSON array (requires remote manifest) |
+| `author_name` | string | no | Author name displayed below the page title |
+| `author_url` | string | no | `http`/`https` URL opened when the author name is clicked |
 
 ## Default path (stable contract)
 
@@ -65,7 +67,9 @@ curl -X POST http://127.0.0.1:8000/publish/gallery \
   -F "title=Album" \
   -F "tags=artwork, illustration" \
   -F "link=https://example.com/artworks/123456" \
-  -F "spoiler=true"
+  -F "spoiler=true" \
+  -F "author_name=Alice" \
+  -F "author_url=https://example.com/alice"
 
 curl -X POST http://127.0.0.1:8000/publish/gallery \
   -F 'media=[{"assetId":"a","kind":"image","sourceUrl":"https://cdn.example.com/full/001.jpg","filename":"001.jpg"}]'

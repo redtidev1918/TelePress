@@ -110,6 +110,28 @@ class TestCLI(unittest.TestCase):
         )
         mock_instance.publish.assert_called_with('document.md', title='Custom Title')
 
+    @patch('telepress.cli.TelegraphPublisher')
+    def test_cli_author_metadata(self, MockPublisher):
+        """Test CLI author metadata flags."""
+        mock_instance = MagicMock()
+        mock_instance.publish.return_value = 'http://telegra.ph/test'
+        MockPublisher.return_value = mock_instance
+
+        with patch.object(sys, 'argv', [
+            'telepress', 'document.md',
+            '--author-name', 'Alice',
+            '--author-url', 'https://example.com/alice',
+        ]):
+            with patch('sys.stdout', new_callable=io.StringIO):
+                main()
+
+        mock_instance.publish.assert_called_once_with(
+            'document.md',
+            title=None,
+            author_name='Alice',
+            author_url='https://example.com/alice',
+        )
+
 
 class TestCLIArgumentParser(unittest.TestCase):
     def test_cli_no_args_shows_help(self):

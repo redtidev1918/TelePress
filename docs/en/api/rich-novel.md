@@ -21,6 +21,8 @@ source order and the page is published.
 | `title` | string | no | page title, default `Novel` |
 | `token` | string | no | explicit Telegraph token |
 | `manifest` | string | no | JSON array (see below) |
+| `author_name` | string | no | Author name displayed below the page title |
+| `author_url` | string | no | `http`/`https` URL opened when the author name is clicked |
 
 ## Optional manifest
 
@@ -62,5 +64,7 @@ curl -X POST http://127.0.0.1:8000/publish/rich-novel \
   -F "images=@images/001.jpg" \
   -F "images=@images/002.jpg" \
   -F "title=Rich Novel" \
+  -F "author_name=Alice" \
+  -F "author_url=https://example.com/alice" \
   -F 'manifest=[{"local":"images/001.jpg","source":"https://cdn.example.com/full/001.jpg"}]'
 ```

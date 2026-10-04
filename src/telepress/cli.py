@@ -258,7 +258,12 @@ def handle_publish(args):
         if api_url:
             publisher_options['api_url'] = api_url
         publisher = TelegraphPublisher(**publisher_options)
-        url = publisher.publish(args.file, title=args.title)
+        publish_kwargs = {}
+        if getattr(args, 'author_name', None) is not None:
+            publish_kwargs['author_name'] = args.author_name
+        if getattr(args, 'author_url', None) is not None:
+            publish_kwargs['author_url'] = args.author_url
+        url = publisher.publish(args.file, title=args.title, **publish_kwargs)
         print(f"\n✅ Success! Page created: {url}")
     except TelePressError as e:
         print(f"\n❌ Error: {e}")
@@ -279,6 +284,8 @@ def main():
         parser.add_argument("--image-size-limit", type=float, help="Max image size in MB (default: 5)", default=None)
         parser.add_argument("--no-compress", action="store_true", help="Disable automatic image compression")
         parser.add_argument("--api-url", help="Custom API URL (e.g. http://localhost:9009)", default=None)
+        parser.add_argument("--author-name", help="Author name displayed below the title", default=None)
+        parser.add_argument("--author-url", help="URL opened when the author name is clicked", default=None)
         args = parser.parse_args()
         handle_publish(args)
         return
@@ -303,6 +310,8 @@ def main():
     publish_parser.add_argument("--image-size-limit", type=float, help="Max image size in MB (default: 5)", default=None)
     publish_parser.add_argument("--no-compress", action="store_true", help="Disable automatic image compression")
     publish_parser.add_argument("--api-url", help="Custom API URL (e.g. http://localhost:9009)", default=None)
+    publish_parser.add_argument("--author-name", help="Author name displayed below the title", default=None)
+    publish_parser.add_argument("--author-url", help="URL opened when the author name is clicked", default=None)
 
     args = parser.parse_args()
     

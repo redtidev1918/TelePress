@@ -119,7 +119,13 @@ def _get_publisher(token=None):
     return _default_publisher
 
 
-def publish(file_path: str, title: str = None, token: str = None) -> str:
+def publish(
+    file_path: str,
+    title: str = None,
+    token: str = None,
+    author_name: str = None,
+    author_url: str = None,
+) -> str:
     """
     Convenience function to publish a file to Telegraph.
     
@@ -127,6 +133,8 @@ def publish(file_path: str, title: str = None, token: str = None) -> str:
         file_path: Path to file (.md, .txt, .jpg, .png, .zip, etc.)
         title: Optional title (defaults to filename)
         token: Optional Telegraph token (uses cached token if not provided)
+        author_name: Optional author name displayed below the title
+        author_url: Optional URL opened when the author name is clicked
     
     Returns:
         str: URL of the published Telegraph page
@@ -137,10 +145,21 @@ def publish(file_path: str, title: str = None, token: str = None) -> str:
         >>> print(url)
         https://telegra.ph/My-Article-12-07
     """
-    return _get_publisher(token).publish(file_path, title=title)
+    author_kwargs = {}
+    if author_name is not None:
+        author_kwargs['author_name'] = author_name
+    if author_url is not None:
+        author_kwargs['author_url'] = author_url
+    return _get_publisher(token).publish(file_path, title=title, **author_kwargs)
 
 
-def publish_text(content: str, title: str, token: str = None) -> str:
+def publish_text(
+    content: str,
+    title: str,
+    token: str = None,
+    author_name: str = None,
+    author_url: str = None,
+) -> str:
     """
     Convenience function to publish text content directly to Telegraph.
     
@@ -148,6 +167,8 @@ def publish_text(content: str, title: str, token: str = None) -> str:
         content: Markdown or plain text content
         title: Page title (required)
         token: Optional Telegraph token
+        author_name: Optional author name displayed below the title
+        author_url: Optional URL opened when the author name is clicked
     
     Returns:
         str: URL of the published Telegraph page
@@ -158,4 +179,9 @@ def publish_text(content: str, title: str, token: str = None) -> str:
         >>> print(url)
         https://telegra.ph/Hello-World-12-07
     """
-    return _get_publisher(token).publish_text(content, title=title)
+    author_kwargs = {}
+    if author_name is not None:
+        author_kwargs['author_name'] = author_name
+    if author_url is not None:
+        author_kwargs['author_url'] = author_url
+    return _get_publisher(token).publish_text(content, title=title, **author_kwargs)

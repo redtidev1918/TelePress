@@ -17,6 +17,8 @@ Publish a string of Markdown / plain text to a Telegraph page.
 | `content` | string | yes | Markdown or plain text |
 | `title` | string | yes | Page title |
 | `token` | string | no | Explicit Telegraph token |
+| `author_name` | string | no | Author name displayed below the page title |
+| `author_url` | string | no | `http`/`https` URL opened when the author name is clicked |
 
 ## Response
 
@@ -30,5 +32,5 @@ Publish a string of Markdown / plain text to a Telegraph page.
 curl -X POST http://127.0.0.1:8000/publish/text \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-api-key" \
-  -d '{"content":"# Heading\n\nBody","title":"Example"}'
+  -d '{"content":"# Heading\n\nBody","title":"Example","author_name":"Alice","author_url":"https://example.com/alice"}'
 ```

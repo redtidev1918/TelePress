@@ -16,6 +16,7 @@ telepress install-rclone
 
 ```
 telepress publish article.md --title "My article" \
+  --author-name "Alice" --author-url https://example.com/alice \
   --image-size-limit 10 --no-compress --api-url http://localhost:9009
 ```
 
@@ -27,6 +28,8 @@ telepress publish article.md --title "My article" \
 | `--image-size-limit` | Max image size in MiB (default 5) |
 | `--no-compress` | Do not auto-compress oversized images |
 | `--api-url` | Custom Telegraph-compatible API URL |
+| `--author-name` | Author name displayed below the page title |
+| `--author-url` | URL opened when the author name is clicked |
 
 ## configure / check
 

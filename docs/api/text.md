@@ -17,6 +17,8 @@
 | `content` | string | 是 | Markdown 或纯文本内容 |
 | `title` | string | 是 | 页面标题 |
 | `token` | string | 否 | 显式 Telegraph token |
+| `author_name` | string | 否 | Telegraph 页面标题下方显示的作者名称 |
+| `author_url` | string | 否 | 点击作者名称后打开的 `http`/`https` URL |
 
 ## 返回模型
 
@@ -30,5 +32,5 @@
 curl -X POST http://127.0.0.1:8000/publish/text \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-api-key" \
-  -d '{"content":"# 标题\n\n正文","title":"示例"}'
+  -d '{"content":"# 标题\n\n正文","title":"示例","author_name":"Alice","author_url":"https://example.com/alice"}'
 ```

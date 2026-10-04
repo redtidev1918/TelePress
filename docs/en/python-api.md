@@ -14,6 +14,35 @@ publisher = TelegraphPublisher(image_size_limit=10)
 gallery_url = publisher.publish("gallery.zip", title="Gallery")
 ```
 
+### Telegraph author metadata
+
+Pass optional `author_name` and `author_url` values when publishing. TelePress
+forwards them as the official Telegraph `createPage` fields; it does not insert
+author markup into the page content:
+
+```python
+url = publish(
+    "article.md",
+    title="My Article",
+    author_name="Alice",
+    author_url="https://example.com/alice",
+)
+
+# Direct text publishing supports the same fields
+text_url = publish_text(
+    "# Hello\n\nWorld",
+    title="Hello",
+    author_name="Alice",
+    author_url="https://example.com/alice",
+)
+```
+
+- `author_name` is displayed below the Telegraph page title.
+- `author_url` is opened when readers click the author name.
+- Either field can be omitted; a URL must be a valid `http`/`https` URL.
+- Omitting both fields produces the same request as previous TelePress versions.
+  TelePress never infers authors from Telegram, Pixiv, or another provider.
+
 ## Upload images
 
 ```python

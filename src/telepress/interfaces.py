@@ -9,13 +9,21 @@ class IPublisher(ABC):
     """
     
     @abstractmethod
-    def publish(self, source: Any, title: Optional[str] = None) -> str:
+    def publish(
+        self,
+        source: Any,
+        title: Optional[str] = None,
+        author_name: Optional[str] = None,
+        author_url: Optional[str] = None,
+    ) -> str:
         """
         Publish content from the source.
         
         Args:
             source: The content to publish (file path, raw text, etc.)
             title: Optional title for the publication
+            author_name: Optional author name displayed by Telegraph
+            author_url: Optional author URL linked by Telegraph
             
         Returns:
             str: The URL of the published content
