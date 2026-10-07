@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.17.1](https://github.com/redtidev1918/TelePress/compare/v0.17.0...v0.17.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* **pagination:** enforce rendered UTF-8 page size limits ([#73](https://github.com/redtidev1918/TelePress/issues/73)) ([a0a5e3b](https://github.com/redtidev1918/TelePress/commit/a0a5e3b6e34ca51fdebc87074981b4995227c694))
+
 ## [0.17.0](https://github.com/redtidev1918/TelePress/compare/v0.16.4...v0.17.0) (2026-10-04)
 
 
