@@ -16,6 +16,7 @@ TelePress = **Preview / Publishing Plane**。它把请求里的内容与媒体�
 - **不持有上游业务状态**：不做审核、不做 moderation、不作调度器、不是 Telegram Bot。
 - **结构化失败**：错误必须带上 stage / code / reason，便于调用方归因（例如 `/publish/rich-novel` 的 `assets[].status`）。
 - **向后兼容**：不能因为新增富媒体能力而摧毁已存在的纯文本 / 文件 / multipart 图集发布路径。
+- **页面大小按渲染后的 UTF-8 JSON 计算**：源字符数只是目标；正文每页最多 60 KiB，含导航的页面最多 64 KiB。分页保留正文和格式，不截断内容，不能反复重试相同的超限页面。
 
 ## 媒体
 
