@@ -476,6 +476,8 @@ class TelegraphPublisher(IPublisher):
                         break
                     except Exception as e:
                         error_msg = str(e)
+                        if 'CONTENT_TOO_BIG' in error_msg:
+                            raise ValidationError("Telegraph page navigation exceeds the content limit") from e
                         match = re.search(r'Retry in (\d+)', error_msg)
                         if 'Flood control' in error_msg and match:
                             wait_time = int(match.group(1)) + 1
@@ -588,6 +590,10 @@ class TelegraphPublisher(IPublisher):
                     break
                 except Exception as e:
                     error_msg = str(e)
+                    if 'CONTENT_TOO_BIG' in error_msg:
+                        raise ValidationError(
+                            f"Telegraph rejected Part {part_num}/{total_parts}: CONTENT_TOO_BIG"
+                        ) from e
                     # Check if max retries reached
                     if attempt >= max_retries - 1:
                         raise RuntimeError(

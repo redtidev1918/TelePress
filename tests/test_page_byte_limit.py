@@ -70,6 +70,20 @@ def test_oversized_indivisible_media_rejected_without_truncation():
         _paginate_nodes([{"tag": "img", "attrs": {"src": "https://example.com/" + "a" * 70_000}}])
 
 
+def test_provider_size_rejection_is_not_retried(tmp_path):
+    path = tmp_path / "novel.txt"
+    path.write_text("Test paragraph", encoding="utf-8")
+    client = MagicMock()
+    client.create_page.side_effect = RuntimeError("CONTENT_TOO_BIG")
+    with patch("telepress.core.TelegraphAuth") as auth, patch("telepress.core.time.sleep") as sleep:
+        auth.return_value.get_client.return_value = client
+        publisher = TelegraphPublisher(token="fake", skip_duplicate=False)
+        with pytest.raises(ValidationError, match="CONTENT_TOO_BIG"):
+            publisher.publish_markdown(str(path), "Test")
+    client.create_page.assert_called_once()
+    sleep.assert_not_called()
+
+
 def test_long_navigation_index_falls_back_to_compact_index():
     client = MagicMock()
     content = [{"tag": "p", "children": ["a" * 61_000]}]
