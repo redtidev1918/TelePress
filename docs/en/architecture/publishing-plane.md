@@ -39,6 +39,19 @@ Input may come from any source; the output is always a public Telegraph URL.
 - structured failures: callers can attribute by stage / status
 - backward compatible: new rich paths never break plain-text / multipart paths
 
+## Telegraph page size
+
+The 20,000 source-character target is followed by a rendered-byte check using
+the Telegraph client's compact UTF-8 JSON encoding. Each body is limited to
+60 KiB, leaving room for navigation. Oversized bodies split at node boundaries;
+oversized paragraphs retain formatting containers and all text. Indivisible
+media attributes that exceed the budget fail explicitly. Navigation is checked
+against the 64 KiB content limit and uses a compact page index when needed.
+
+Reuse the existing MarkdownConverter and Telegraph Python client. The
+[official createPage / editPage contract](https://telegra.ph/api) specifies a
+64 KB content limit for both methods; the client uses ensure_ascii=False.
+
 ## Agent constraints
 
 See [AGENTS.md](../../../AGENTS.md) for the repository-wide long-term constraints.

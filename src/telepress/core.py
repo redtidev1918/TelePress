@@ -29,11 +29,62 @@ from .interfaces import IPublisher
 # Cache file for deduplication
 CACHE_FILE = os.path.expanduser("~/.telepress_cache.json")
 
-# Source-text target for one Markdown page. Telegraph accepts larger pages, but
-# generated node JSON can be roughly 2-3x the source length. 20k keeps a
-# comfortable safety margin while substantially reducing page-turn frequency
-# compared with the previous 10k split.
+# Source-text target only; rendered UTF-8 node JSON is bounded separately.
 MARKDOWN_PAGE_CHUNK_SIZE = 20_000
+TELEGRAPH_CONTENT_LIMIT = 64 * 1024
+TELEGRAPH_BODY_LIMIT = 60 * 1024
+
+
+def _node_json_size(value) -> int:
+    """Match telegraph.utils.json_dumps, including multibyte text and escaping."""
+    return len(json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode('utf-8'))
+
+
+def _split_large_node(node, limit: int) -> List:
+    if _node_json_size(node) <= limit:
+        return [node]
+    if isinstance(node, str):
+        # Find a fitting prefix without cutting a Unicode code point.
+        pieces = []
+        while node:
+            low, high = 0, len(node)
+            while low < high:
+                mid = (low + high + 1) // 2
+                if _node_json_size(node[:mid]) <= limit:
+                    low = mid
+                else:
+                    high = mid - 1
+            if not low:
+                raise ValidationError("Telegraph content node cannot fit the page limit")
+            pieces.append(node[:low])
+            node = node[low:]
+        return pieces
+    if isinstance(node, dict) and node.get('children'):
+        wrapper = {**node, 'children': []}
+        # Empty children already contribute two brackets to the wrapper size.
+        child_limit = limit - _node_json_size(wrapper) + 2
+        if child_limit >= 2:
+            return [
+                {**node, 'children': children}
+                for children in _paginate_nodes(node['children'], child_limit)
+            ]
+    raise ValidationError("Telegraph content node cannot fit the page limit")
+
+
+def _paginate_nodes(nodes: List, limit: int = TELEGRAPH_BODY_LIMIT) -> List[List]:
+    """Pack rendered nodes; split oversized text containers without losing text."""
+    pages, current, size = [], [], 2  # JSON array brackets
+    for node in nodes:
+        for piece in _split_large_node(node, limit - 2):
+            piece_size = _node_json_size(piece)
+            if current and size + 1 + piece_size > limit:
+                pages.append(current)
+                current, size = [], 2
+            size += piece_size + (1 if current else 0)
+            current.append(piece)
+    if current:
+        pages.append(current)
+    return pages or [[]]
 
 def _load_cache() -> Dict:
     """Load published content cache."""
@@ -399,6 +450,16 @@ class TelegraphPublisher(IPublisher):
 
             if nav_nodes:
                 new_content = info['content'] + [{'tag': 'hr'}] + nav_nodes
+                if _node_json_size(new_content) > TELEGRAPH_CONTENT_LIMIT:
+                    # Long titles/URLs can make the full page index larger than
+                    # the reserved space. Keep Prev/Next and a compact index.
+                    nav_nodes[-1] = {
+                        'tag': 'p',
+                        'children': [f"Pages: {info.get('part_num', i+1)} / {total_parts}"],
+                    }
+                    new_content = info['content'] + [{'tag': 'hr'}] + nav_nodes
+                if _node_json_size(new_content) > TELEGRAPH_CONTENT_LIMIT:
+                    raise ValidationError("Telegraph page navigation exceeds the content limit")
                 
                 # Retry logic for linking
                 max_retries = 3
@@ -443,9 +504,7 @@ class TelegraphPublisher(IPublisher):
         Publish a markdown/text file to Telegraph.
         Large files are automatically split into multiple pages.
         
-        Limits:
-        - Maximum ~4 million characters (100 pages × 40000 chars)
-        - Files exceeding this will be truncated with a warning
+        Pages are bounded by rendered UTF-8 JSON size, without truncating text.
         """
         author_kwargs = _author_metadata_kwargs(author_name, author_url)
 
@@ -485,25 +544,27 @@ class TelegraphPublisher(IPublisher):
             content, os.path.dirname(os.path.abspath(file_path))
         )
 
-        # Telegraph's API limit is roughly 64KB of node JSON. Markdown conversion
-        # expands source text, so use MARKDOWN_PAGE_CHUNK_SIZE (20k chars) as a
-        # conservative source target. This halves the number of page turns for
-        # typical novel uploads while preserving line/paragraph boundaries.
+        # Keep the source target, then enforce the actual rendered byte budget.
+        # A 20k-character Chinese novel with many short paragraphs can exceed
+        # Telegraph's 64 KiB limit despite fitting the source target.
         if len(content) > MARKDOWN_PAGE_CHUNK_SIZE:
             print(f"Text too large ({len(content)} chars). Splitting...")
         chunks = _split_markdown_chunks(content)
+        node_pages = [
+            page for chunk in chunks
+            for page in _paginate_nodes(self.converter.convert(chunk))
+        ]
 
-        total_parts = len(chunks)
+        total_parts = len(node_pages)
         pages_info = []
         
-        for i, chunk_text in enumerate(chunks):
+        for i, nodes in enumerate(node_pages):
             part_num = i + 1
             page_title = title
             if total_parts > 1:
                 page_title = f"{title} ({part_num}/{total_parts})"
             
-            print(f"Publishing Part {part_num}/{total_parts} ({len(chunk_text)} chars)...")
-            nodes = self.converter.convert(chunk_text)
+            print(f"Publishing Part {part_num}/{total_parts} ({_node_json_size(nodes)} bytes)...")
             
             # Retry with delay for flood control
             max_retries = 5
@@ -522,7 +583,7 @@ class TelegraphPublisher(IPublisher):
                         'part_num': part_num
                     })
                     # Small delay between requests to avoid flood control
-                    if i < len(chunks) - 1:
+                    if i < total_parts - 1:
                         time.sleep(0.5)
                     break
                 except Exception as e:
