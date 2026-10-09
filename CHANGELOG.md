@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.17.2](https://github.com/redtidev1918/TelePress/compare/v0.17.1...v0.17.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* **pagination:** pack the complete rendered document without short overflow pages ([#76](https://github.com/redtidev1918/TelePress/issues/76)) ([0c36b54](https://github.com/redtidev1918/TelePress/commit/0c36b54564edaf77137f8df2e931f906f83edad4))
+
 ## [0.17.1](https://github.com/redtidev1918/TelePress/compare/v0.17.0...v0.17.1) (2026-10-07)
 
 
