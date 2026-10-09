@@ -95,7 +95,7 @@ def test_markdown_spanning_old_source_boundary_retains_formatting(tmp_path):
     assert all(byte_size(page) <= TELEGRAPH_BODY_LIMIT for page in pages)
 
 
-def test_text_endpoint_preserves_cross_boundary_reference_links():
+def test_text_endpoint_preserves_cross_boundary_reference_links(tmp_path):
     from fastapi.testclient import TestClient
     from telepress.server import app
 
@@ -106,7 +106,12 @@ def test_text_endpoint_preserves_cross_boundary_reference_links():
         "url": f"https://telegra.ph/part-{client.create_page.call_count}",
         "path": f"part-{client.create_page.call_count}",
     }
+    # The endpoint builds its own publisher with skip_duplicate enabled, which
+    # reads the persistent ~/.telepress_cache.json dedup cache. Without an
+    # isolated cache file this test passes on a fresh machine and silently
+    # short-circuits to a cached URL on the second consecutive run.
     with patch("telepress.core.TelegraphAuth") as auth, patch("telepress.core.time.sleep"), \
+            patch("telepress.core.CACHE_FILE", str(tmp_path / "dedup-cache.json")), \
             patch.dict("os.environ", {"TELEPRESS_API_KEY": "pagination-test"}):
         auth.return_value.get_client.return_value = client
         response = TestClient(app).post("/publish/text", json={
