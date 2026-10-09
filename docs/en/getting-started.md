@@ -73,7 +73,7 @@ Interactive OpenAPI docs are at `http://127.0.0.1:8000/docs`. See
 
 - Markdown / text are converted to Telegraph DOM nodes.
 - Plain-text chapter headings such as `Chapter 1` / `第一章` are recognized.
-- Markdown / text is paginated toward a ~20,000 source-character page target, preserving paragraph boundaries where possible, with Prev / Next navigation.
+- Markdown / text is rendered as a whole, then paginated with a ~20,000 text-character target and a 60 KiB node JSON budget, preserving paragraph boundaries where possible, with Prev / Next navigation.
 - Galleries paginate every 100 images.
 - Default per-image limit is 5 MiB; oversized images use demand-driven libvips/pyvips resizing and bounded JPEG/WebP compression, while small files are preserved and GIFs are not re-encoded.
 - Inputs are capped at 2 GiB before processing.

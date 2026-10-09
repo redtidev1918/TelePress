@@ -29,7 +29,7 @@ from .interfaces import IPublisher
 # Cache file for deduplication
 CACHE_FILE = os.path.expanduser("~/.telepress_cache.json")
 
-# Source-text target only; rendered UTF-8 node JSON is bounded separately.
+# Rendered text target; the same pass also bounds UTF-8 node JSON.
 MARKDOWN_PAGE_CHUNK_SIZE = 20_000
 TELEGRAPH_CONTENT_LIMIT = 64 * 1024
 TELEGRAPH_BODY_LIMIT = 60 * 1024
@@ -40,14 +40,21 @@ def _node_json_size(value) -> int:
     return len(json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode('utf-8'))
 
 
-def _split_large_node(node, limit: int) -> List:
-    if _node_json_size(node) <= limit:
+def _node_text_length(node) -> int:
+    if isinstance(node, str):
+        return len(node)
+    return sum(_node_text_length(child) for child in node.get('children', []))
+
+
+def _split_large_node(node, limit: int, char_limit: Optional[int] = None) -> List:
+    if (_node_json_size(node) <= limit
+            and (char_limit is None or _node_text_length(node) <= char_limit)):
         return [node]
     if isinstance(node, str):
         # Find a fitting prefix without cutting a Unicode code point.
         pieces = []
         while node:
-            low, high = 0, len(node)
+            low, high = 0, min(len(node), char_limit) if char_limit is not None else len(node)
             while low < high:
                 mid = (low + high + 1) // 2
                 if _node_json_size(node[:mid]) <= limit:
@@ -66,21 +73,27 @@ def _split_large_node(node, limit: int) -> List:
         if child_limit >= 2:
             return [
                 {**node, 'children': children}
-                for children in _paginate_nodes(node['children'], child_limit)
+                for children in _paginate_nodes(node['children'], child_limit, char_limit)
             ]
     raise ValidationError("Telegraph content node cannot fit the page limit")
 
 
-def _paginate_nodes(nodes: List, limit: int = TELEGRAPH_BODY_LIMIT) -> List[List]:
+def _paginate_nodes(nodes: List, limit: int = TELEGRAPH_BODY_LIMIT,
+                    char_limit: Optional[int] = None) -> List[List]:
     """Pack rendered nodes; split oversized text containers without losing text."""
     pages, current, size = [], [], 2  # JSON array brackets
+    chars = 0
     for node in nodes:
-        for piece in _split_large_node(node, limit - 2):
+        for piece in _split_large_node(node, limit - 2, char_limit):
             piece_size = _node_json_size(piece)
-            if current and size + 1 + piece_size > limit:
+            piece_chars = _node_text_length(piece) if char_limit is not None else 0
+            if current and (size + 1 + piece_size > limit
+                            or (char_limit is not None and chars + piece_chars > char_limit)):
                 pages.append(current)
                 current, size = [], 2
+                chars = 0
             size += piece_size + (1 if current else 0)
+            chars += piece_chars
             current.append(piece)
     if current:
         pages.append(current)
@@ -108,42 +121,6 @@ def _content_hash(content: str) -> str:
     """Generate hash for content deduplication."""
     return hashlib.sha256(content.encode('utf-8')).hexdigest()[:16]
 
-
-def _split_markdown_chunks(content: str, chunk_size: int = MARKDOWN_PAGE_CHUNK_SIZE) -> List[str]:
-    """Split markdown source text near ``chunk_size`` without cutting short lines.
-
-    Lines longer than one chunk are force-split so publication can still make
-    progress. Short lines are kept together until the next line would exceed the
-    page target, which preserves paragraph structure for normal novel prose.
-    """
-    if len(content) <= chunk_size:
-        return [content]
-
-    chunks = []
-    current_chunk = []
-    current_len = 0
-
-    for line in content.splitlines(keepends=True):
-        while len(line) > chunk_size:
-            if current_chunk:
-                chunks.append("".join(current_chunk))
-                current_chunk = []
-                current_len = 0
-            chunks.append(line[:chunk_size])
-            line = line[chunk_size:]
-
-        if current_len + len(line) > chunk_size and current_chunk:
-            chunks.append("".join(current_chunk))
-            current_chunk = []
-            current_len = 0
-
-        current_chunk.append(line)
-        current_len += len(line)
-
-    if current_chunk:
-        chunks.append("".join(current_chunk))
-
-    return chunks
 
 def _validate_author_metadata(author_name: Optional[str], author_url: Optional[str]) -> None:
     """Validate optional Telegraph author metadata."""
@@ -546,16 +523,12 @@ class TelegraphPublisher(IPublisher):
             content, os.path.dirname(os.path.abspath(file_path))
         )
 
-        # Keep the source target, then enforce the actual rendered byte budget.
-        # A 20k-character Chinese novel with many short paragraphs can exceed
-        # Telegraph's 64 KiB limit despite fitting the source target.
-        if len(content) > MARKDOWN_PAGE_CHUNK_SIZE:
-            print(f"Text too large ({len(content)} chars). Splitting...")
-        chunks = _split_markdown_chunks(content)
-        node_pages = [
-            page for chunk in chunks
-            for page in _paginate_nodes(self.converter.convert(chunk))
-        ]
+        # Render once so Markdown constructs remain intact. Apply both budgets
+        # across the entire node stream: separately paginating source chunks
+        # strands a short overflow page after every full CJK chunk.
+        node_pages = _paginate_nodes(
+            self.converter.convert(content), char_limit=MARKDOWN_PAGE_CHUNK_SIZE,
+        )
 
         total_parts = len(node_pages)
         pages_info = []

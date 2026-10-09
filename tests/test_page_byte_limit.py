@@ -6,7 +6,7 @@ from telegraph.utils import json_dumps
 
 from telepress.core import (
     TelegraphPublisher, TELEGRAPH_BODY_LIMIT, TELEGRAPH_CONTENT_LIMIT,
-    _paginate_nodes, _split_markdown_chunks,
+    MARKDOWN_PAGE_CHUNK_SIZE, _paginate_nodes,
 )
 from telepress.exceptions import ValidationError
 
@@ -46,13 +46,79 @@ def test_publication_paginates_rendered_json_and_preserves_text(tmp_path, paragr
     with patch("telepress.core.TelegraphAuth") as auth, patch("telepress.core.time.sleep"):
         auth.return_value.get_client.return_value = client
         publisher = TelegraphPublisher(token="fake", skip_duplicate=False)
-        expected = [n for chunk in _split_markdown_chunks(content)
-                    for n in publisher.converter.convert(chunk)]
+        expected = publisher.converter.convert(content)
         assert publisher.publish_markdown(str(path), "Unicode") == "https://telegra.ph/part-1"
 
     assert len(created) > 1
     assert len(edited) == len(created)
     assert "".join(text_of(n) for page in created for n in page) == "".join(text_of(n) for n in expected)
+
+
+def test_cjk_publication_does_not_strand_short_pages_between_source_chunks(tmp_path):
+    paragraphs = [f"段落{i:04d}：" + "测试正文。" * 18 for i in range(900)]
+    path = tmp_path / "novel.txt"
+    path.write_text("\n".join(paragraphs), encoding="utf-8")
+    client = MagicMock()
+    client.create_page.side_effect = lambda **kw: {
+        "url": f"https://telegra.ph/part-{client.create_page.call_count}",
+        "path": f"part-{client.create_page.call_count}",
+    }
+    with patch("telepress.core.TelegraphAuth") as auth, patch("telepress.core.time.sleep"):
+        auth.return_value.get_client.return_value = client
+        publisher = TelegraphPublisher(token="fake", skip_duplicate=False)
+        publisher.publish_markdown(str(path), "Pagination regression")
+    pages = [call.kwargs["content"] for call in client.create_page.call_args_list]
+    assert len(pages) == 5
+    assert all(TELEGRAPH_BODY_LIMIT * 0.95 < byte_size(page) <= TELEGRAPH_BODY_LIMIT
+               for page in pages[:-1])
+    # Compare to the source itself, not another invocation of the paginator.
+    assert "".join(text_of(n) for page in pages for n in page) == "".join(paragraphs)
+    assert client.edit_page.call_count == len(pages)
+    for call in client.edit_page.call_args_list:
+        assert byte_size(call.kwargs["content"]) <= TELEGRAPH_CONTENT_LIMIT
+
+
+def test_markdown_spanning_old_source_boundary_retains_formatting(tmp_path):
+    body = "边界测试" * 12_000
+    path = tmp_path / "formatted.md"
+    path.write_text("**" + body + "**", encoding="utf-8")
+    client = MagicMock()
+    client.create_page.return_value = {"url": "https://telegra.ph/test", "path": "test"}
+    with patch("telepress.core.TelegraphAuth") as auth, patch("telepress.core.time.sleep"):
+        auth.return_value.get_client.return_value = client
+        publisher = TelegraphPublisher(token="fake", skip_duplicate=False)
+        publisher.publish_markdown(str(path), "Formatting regression")
+    pages = [call.kwargs["content"] for call in client.create_page.call_args_list]
+    assert "".join(text_of(n) for page in pages for n in page) == body
+    assert all(n["children"][0]["tag"] == "strong" for page in pages for n in page)
+    assert all(sum(len(text_of(n)) for n in page) <= MARKDOWN_PAGE_CHUNK_SIZE for page in pages)
+    assert all(byte_size(page) <= TELEGRAPH_BODY_LIMIT for page in pages)
+
+
+def test_text_endpoint_preserves_cross_boundary_reference_links():
+    from fastapi.testclient import TestClient
+    from telepress.server import app
+
+    content = "[Reference][target]\n\n" + ("测试正文。" * 20 + "\n\n") * 500
+    content += "\n[target]: https://example.com/reference\n"
+    client = MagicMock()
+    client.create_page.side_effect = lambda **kw: {
+        "url": f"https://telegra.ph/part-{client.create_page.call_count}",
+        "path": f"part-{client.create_page.call_count}",
+    }
+    with patch("telepress.core.TelegraphAuth") as auth, patch("telepress.core.time.sleep"), \
+            patch.dict("os.environ", {"TELEPRESS_API_KEY": "pagination-test"}):
+        auth.return_value.get_client.return_value = client
+        response = TestClient(app).post("/publish/text", json={
+            "content": content, "title": "Reference regression", "token": "fake",
+        }, headers={"X-TelePress-Key": "pagination-test"})
+    assert response.status_code == 200, response.text
+    pages = [call.kwargs["content"] for call in client.create_page.call_args_list]
+    assert len(pages) > 1
+    link = pages[0][0]["children"][0]
+    assert link["tag"] == "a"
+    assert link["attrs"]["href"] == "https://example.com/reference"
+    assert "".join(text_of(n) for page in pages for n in page) == "Reference" + "测试正文。" * 10_000
 
 
 def test_oversized_nested_paragraph_keeps_formatting_and_unicode():
