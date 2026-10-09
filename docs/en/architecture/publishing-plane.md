@@ -41,9 +41,12 @@ Input may come from any source; the output is always a public Telegraph URL.
 
 ## Telegraph page size
 
-The 20,000 source-character target is followed by a rendered-byte check using
-the Telegraph client's compact UTF-8 JSON encoding. Each body is limited to
-60 KiB, leaving room for navigation. Oversized bodies split at node boundaries;
+Render the complete Markdown once to preserve formatting across source boundaries.
+A single pagination pass applies both the 20,000 text-character target and the
+Telegraph client's compact UTF-8 JSON budget of 60 KiB, leaving room for navigation.
+Do not paginate source chunks independently: this strands short overflow pages
+in the middle of the document. The final page may be short; paragraph and
+indivisible media boundaries may also leave space. Oversized bodies split at node boundaries;
 oversized paragraphs retain formatting containers and all text. Indivisible
 media attributes that exceed the budget fail explicitly. Navigation is checked
 against the 64 KiB content limit and uses a compact page index when needed.

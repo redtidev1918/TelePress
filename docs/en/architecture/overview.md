@@ -18,7 +18,7 @@ Public Preview URL
 
 ## Components
 
-- **Renderer**: Markdown / text → Telegraph DOM nodes, paginated toward a ~20,000 source-character page target.
+- **Renderer**: Markdown / text → Telegraph DOM nodes, then paginated with a ~20,000 text-character target and a 60 KiB JSON budget.
 - **Media Resolver**: resolves a `MediaReference` to a public URL via the proxy
   or upload path.
 - **Telegraph Publisher**: creates pages and pagination through the Telegraph API.
