@@ -14,6 +14,7 @@ Basic usage:
 """
 
 from .core import TelegraphPublisher
+from .author import AuthorMetadata
 from .uploader import ImageUploader, UploadResult, BatchUploadResult
 from .image_host import (
     ImageHost, ImageHostCapabilities, create_image_host,
@@ -49,6 +50,7 @@ from .version import __version__
 __all__ = [
     # Main classes
     'TelegraphPublisher',
+    'AuthorMetadata',
     'ImageUploader',
     'UploadResult',
     'BatchUploadResult',
@@ -125,6 +127,7 @@ def publish(
     token: str = None,
     author_name: str = None,
     author_url: str = None,
+    author: AuthorMetadata = None,
 ) -> str:
     """
     Convenience function to publish a file to Telegraph.
@@ -135,6 +138,8 @@ def publish(
         token: Optional Telegraph token (uses cached token if not provided)
         author_name: Optional author name displayed below the title
         author_url: Optional URL opened when the author name is clicked
+        author: Optional structured AuthorMetadata; alternative to the flat
+            author_name/author_url kwargs (not both)
     
     Returns:
         str: URL of the published Telegraph page
@@ -145,12 +150,13 @@ def publish(
         >>> print(url)
         https://telegra.ph/My-Article-12-07
     """
-    author_kwargs = {}
-    if author_name is not None:
-        author_kwargs['author_name'] = author_name
-    if author_url is not None:
-        author_kwargs['author_url'] = author_url
-    return _get_publisher(token).publish(file_path, title=title, **author_kwargs)
+    return _get_publisher(token).publish(
+        file_path,
+        title=title,
+        author_name=author_name,
+        author_url=author_url,
+        author=author,
+    )
 
 
 def publish_text(
@@ -159,6 +165,7 @@ def publish_text(
     token: str = None,
     author_name: str = None,
     author_url: str = None,
+    author: AuthorMetadata = None,
 ) -> str:
     """
     Convenience function to publish text content directly to Telegraph.
@@ -169,6 +176,8 @@ def publish_text(
         token: Optional Telegraph token
         author_name: Optional author name displayed below the title
         author_url: Optional URL opened when the author name is clicked
+        author: Optional structured AuthorMetadata; alternative to the flat
+            author_name/author_url kwargs (not both)
     
     Returns:
         str: URL of the published Telegraph page
@@ -179,9 +188,10 @@ def publish_text(
         >>> print(url)
         https://telegra.ph/Hello-World-12-07
     """
-    author_kwargs = {}
-    if author_name is not None:
-        author_kwargs['author_name'] = author_name
-    if author_url is not None:
-        author_kwargs['author_url'] = author_url
-    return _get_publisher(token).publish_text(content, title=title, **author_kwargs)
+    return _get_publisher(token).publish_text(
+        content,
+        title=title,
+        author_name=author_name,
+        author_url=author_url,
+        author=author,
+    )

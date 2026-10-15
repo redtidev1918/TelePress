@@ -589,7 +589,7 @@ class TestRichNovelEndpoint(unittest.TestCase):
     def test_rich_novel_success(self):
         seen = {}
 
-        def fake_publish(md_path, title, manifest=None):
+        def fake_publish(md_path, title, manifest=None, **kwargs):
             seen['md_path'] = md_path
             seen['title'] = title
             seen['img1'] = os.path.isfile(
@@ -622,7 +622,7 @@ class TestRichNovelEndpoint(unittest.TestCase):
         """manifest form field is parsed and forwarded to the publisher."""
         seen = {}
         self.mock_publisher_instance.publish_rich_markdown.side_effect = (
-            lambda md_path, title, manifest=None: seen.update(
+            lambda md_path, title, manifest=None, **kwargs: seen.update(
                 manifest=manifest
             ) or {"url": "http://telegra.ph/rich", "assets": []}
         )

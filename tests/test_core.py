@@ -43,7 +43,7 @@ class TestPublishRouting(unittest.TestCase):
         """Test that .zip files are routed to publish_zip_gallery."""
         mock_gallery.return_value = 'http://result.url'
         result = self.publisher.publish('/path/to/file.zip', title='Test')
-        mock_gallery.assert_called_once_with('/path/to/file.zip', 'Test')
+        mock_gallery.assert_called_once_with('/path/to/file.zip', 'Test', author=None)
 
     @patch.object(TelegraphPublisher, 'publish_image')
     @patch('os.path.getsize', return_value=1024)
@@ -88,7 +88,7 @@ class TestPublishRouting(unittest.TestCase):
         with patch.object(self.publisher, 'publish_markdown') as mock_md:
             mock_md.return_value = 'http://result.url'
             self.publisher.publish('/path/to/my_article.md')
-            mock_md.assert_called_with('/path/to/my_article.md', 'my_article')
+            mock_md.assert_called_with('/path/to/my_article.md', 'my_article', author=None)
 
     def test_publish_file_not_found(self):
         """Test that non-existent file raises FileNotFoundError."""

@@ -16,11 +16,20 @@ gallery_url = publisher.publish("gallery.zip", title="Gallery")
 
 ### Telegraph author metadata
 
-Pass optional `author_name` and `author_url` values when publishing. TelePress
-forwards them as the official Telegraph `createPage` fields; it does not insert
-author markup into the page content:
+Author metadata is optional and accepts two equivalent forms (**pick one,
+never mix**):
 
 ```python
+from telepress import AuthorMetadata, publish, publish_text
+
+# Structured object (recommended; future fields extend this object only)
+url = publish(
+    "article.md",
+    title="My Article",
+    author=AuthorMetadata(name="Alice", url="https://example.com/alice"),
+)
+
+# Flat kwargs (the legacy form since v0.17.0, still supported)
 url = publish(
     "article.md",
     title="My Article",
@@ -28,19 +37,25 @@ url = publish(
     author_url="https://example.com/alice",
 )
 
-# Direct text publishing supports the same fields
+# Direct text publishing supports the same forms
 text_url = publish_text(
     "# Hello\n\nWorld",
     title="Hello",
-    author_name="Alice",
-    author_url="https://example.com/alice",
+    author=AuthorMetadata(name="Alice", url="https://example.com/alice"),
 )
 ```
 
-- `author_name` is displayed below the Telegraph page title.
-- `author_url` is opened when readers click the author name.
+- `name` / `author_name` is displayed below the Telegraph page title.
+- `url` / `author_url` is opened when readers click the author name.
 - Either field can be omitted; a URL must be a valid `http`/`https` URL.
-- Omitting both fields produces the same request as previous TelePress versions.
+- Passing both `author=` and the flat kwargs raises `ValidationError`; there is
+  no silent precedence.
+- `AuthorMetadata` is a frozen dataclass validated on construction. Every
+  `TelegraphPublisher` `publish*` method and the `publish` / `publish_text`
+  convenience functions accept `author=`. Future author attributes (avatar,
+  description, publisher, channel link, ...) will extend this object instead of
+  adding more flat parameters.
+- Omitting author fields produces the same request as previous TelePress versions.
   TelePress never infers authors from Telegram, Pixiv, or another provider.
 
 ## Upload images
@@ -109,7 +124,8 @@ temporary host for long-term archiving".
 The `telepress` package exports publishers, uploaders, host classes
 (`ImgbbHost`, `ImgurHost`, `SmmsHost`, `CatboxHost`, `FreeImageHost`,
 `UploadcareHost`, `ImageKitHost`, `CloudinaryHost`, `ZeroXZeroHost`,
-`LitterboxHost`, `R2Host`, `S3Host`, `CustomHost`), `ResolvedMedia`,
+`LitterboxHost`, `R2Host`, `S3Host`, `CustomHost`), `AuthorMetadata`,
+`ResolvedMedia`,
 `create_image_host`, `load_config`, `get_image_host_config`,
 `provider_qualify`, exceptions (`TelePressError`,
 `ValidationError`, `UploadError`, `AuthenticationError`, `SecurityError`,
