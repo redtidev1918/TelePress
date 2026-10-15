@@ -82,18 +82,6 @@ def get_publisher(token: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def _author_metadata_kwargs(
-    author_name: Optional[str], author_url: Optional[str]
-) -> Dict[str, str]:
-    """Return only explicitly supplied Telegraph author fields."""
-    kwargs: Dict[str, str] = {}
-    if author_name is not None:
-        kwargs['author_name'] = author_name
-    if author_url is not None:
-        kwargs['author_url'] = author_url
-    return kwargs
-
-
 def _write_text_temp(content: str) -> str:
     """Write request text without blocking the async event loop."""
     with tempfile.NamedTemporaryFile(
@@ -239,12 +227,12 @@ def _publish_gallery_worker(
         footer = _build_gallery_footer(tags, link, spoiler)
         pub_title = title or os.path.splitext(os.path.basename(paths[0]))[0]
         publisher = get_publisher(token)
-        author_kwargs = _author_metadata_kwargs(author_name, author_url)
         url = publisher.publish_zip_gallery(
             zip_path,
             title=pub_title,
             footer_nodes=footer,
-            **author_kwargs,
+            author_name=author_name,
+            author_url=author_url,
         )
         return {'url': url, 'files': len(paths)}
     finally:
@@ -287,12 +275,12 @@ def _publish_rich_novel_worker(
                 shutil.copyfileobj(upload.file, out)
 
         publisher = get_publisher(token)
-        author_kwargs = _author_metadata_kwargs(author_name, author_url)
         return publisher.publish_rich_markdown(
             md_path,
             title=title or 'Novel',
             manifest=manifest,
-            **author_kwargs,
+            author_name=author_name,
+            author_url=author_url,
         )
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -312,12 +300,12 @@ async def publish_text(request: TextPublishRequest):
         # Publishing performs synchronous HTTP requests and may wait for rate
         # limits, so keep it off the async event loop.
         publisher = await run_in_threadpool(get_publisher, request.token)
-        author_kwargs = _author_metadata_kwargs(request.author_name, request.author_url)
         url = await run_in_threadpool(
             publisher.publish,
             tmp_path,
             title=request.title,
-            **author_kwargs,
+            author_name=request.author_name,
+            author_url=request.author_url,
         )
         return PublishResponse(url=url)
         
@@ -350,13 +338,13 @@ async def publish_file(
         
         # If no title provided, use filename from upload
         pub_title = title if title else file.filename
-        author_kwargs = _author_metadata_kwargs(author_name, author_url)
-        
+
         url = await run_in_threadpool(
             publisher.publish,
             tmp_path,
             title=pub_title,
-            **author_kwargs,
+            author_name=author_name,
+            author_url=author_url,
         )
         return PublishResponse(url=url)
         

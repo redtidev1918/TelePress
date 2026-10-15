@@ -16,10 +16,19 @@ gallery_url = publisher.publish("gallery.zip", title="图集")
 
 ### Telegraph 作者信息
 
-发布时可选传入 `author_name` 与 `author_url`。TelePress 会把它们作为正式
-Telegraph `createPage` 字段传递，不会把作者名称插入正文：
+发布时可选传入作者元数据，支持两种等价形式（**二选一，不可混用**）：
 
 ```python
+from telepress import AuthorMetadata, publish, publish_text
+
+# 结构化对象（推荐，未来字段只扩展该对象）
+url = publish(
+    "article.md",
+    title="My Article",
+    author=AuthorMetadata(name="Alice", url="https://example.com/alice"),
+)
+
+# 扁平参数（v0.17.0 起的旧写法，继续支持）
 url = publish(
     "article.md",
     title="My Article",
@@ -31,14 +40,18 @@ url = publish(
 text_url = publish_text(
     "# Hello\n\nWorld",
     title="Hello",
-    author_name="Alice",
-    author_url="https://example.com/alice",
+    author=AuthorMetadata(name="Alice", url="https://example.com/alice"),
 )
 ```
 
-- `author_name` 显示在 Telegraph 页面标题下方。
-- `author_url` 是点击作者名称后打开的链接。
+- `name` / `author_name` 显示在 Telegraph 页面标题下方。
+- `url` / `author_url` 是点击作者名称后打开的链接。
 - 两者均可独立省略；URL 必须是有效的 `http`/`https` URL。
+- `author=` 对象与扁平参数同时传入会抛 `ValidationError`，不做静默优先。
+- `AuthorMetadata` 是冻结（frozen）dataclass，构造时即校验；`TelegraphPublisher`
+  的全部 `publish*` 方法与便捷函数 `publish` / `publish_text` 均支持 `author=`。
+  未来的作者属性（头像、简介、发布方、频道链接等）将扩展该对象，而不是继续
+  增加扁平参数。
 - 不传作者字段时 request 与旧版本一致，不会自动推断 Telegram、Pixiv 或
   其他业务平台的作者信息。
 
@@ -105,7 +118,7 @@ print(cap.name, cap.temporary, cap.supports_arbitrary_files, cap.supports_native
 
 `telepress` 包从 `__init__.py` 导出：
 
-- `TelegraphPublisher`、`ImageUploader`、`UploadResult`、`BatchUploadResult`、`ResolvedMedia`
+- `TelegraphPublisher`、`AuthorMetadata`、`ImageUploader`、`UploadResult`、`BatchUploadResult`、`ResolvedMedia`
 - 图床类：`ImgbbHost`、`ImgurHost`、`SmmsHost`、`CatboxHost`、`FreeImageHost`、
   `UploadcareHost`、`ImageKitHost`、`CloudinaryHost`、`ZeroXZeroHost`、
   `LitterboxHost`、`R2Host`、`S3Host`、`CustomHost`

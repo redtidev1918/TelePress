@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 
+from .author import AuthorMetadata
+
 class IPublisher(ABC):
     """
     Abstract Base Class defining the Publisher interface.
@@ -15,6 +17,7 @@ class IPublisher(ABC):
         title: Optional[str] = None,
         author_name: Optional[str] = None,
         author_url: Optional[str] = None,
+        author: Optional[AuthorMetadata] = None,
     ) -> str:
         """
         Publish content from the source.
@@ -24,6 +27,8 @@ class IPublisher(ABC):
             title: Optional title for the publication
             author_name: Optional author name displayed by Telegraph
             author_url: Optional author URL linked by Telegraph
+            author: Optional structured author metadata; alternative to the
+                flat author_name/author_url kwargs (not both)
             
         Returns:
             str: The URL of the published content
