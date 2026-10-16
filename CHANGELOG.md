@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.18.0](https://github.com/redtidev1918/TelePress/compare/v0.17.2...v0.18.0) (2026-10-15)
+
+
+### Features
+
+* **author:** wrap author_name/author_url in a structured AuthorMetadata object ([#80](https://github.com/redtidev1918/TelePress/issues/80)) ([8880b14](https://github.com/redtidev1918/TelePress/commit/8880b147a66c2bf2943334d66ec9f51bd1bdeb65))
+
 ## [0.17.2](https://github.com/redtidev1918/TelePress/compare/v0.17.1...v0.17.2) (2026-10-09)
 
 
