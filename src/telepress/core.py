@@ -9,8 +9,10 @@ import hashlib
 from typing import Optional, List, Dict
 try:
     from telegraph.api import TelegraphApi
+    from telegraph.exceptions import RetryAfterError
 except ImportError:
     TelegraphApi = None
+    RetryAfterError = None
 
 from .auth import TelegraphAuth
 from .author import AuthorMetadata
@@ -566,20 +568,18 @@ class TelegraphPublisher(IPublisher):
                         raise ValidationError(
                             f"Telegraph rejected Part {part_num}/{total_parts}: CONTENT_TOO_BIG"
                         ) from e
-                    # Check if max retries reached
-                    if attempt >= max_retries - 1:
-                        raise RuntimeError(
-                            f"Failed to publish Part {part_num}/{total_parts} after {max_retries} attempts: {e}\n"
-                            f"Successfully published: {len(pages_info)} pages. First page: {pages_info[0]['url'] if pages_info else 'none'}"
-                        )
-                    # Handle flood control - extract wait time
-                    match = re.search(r'Retry in (\d+)', error_msg)
-                    if 'Flood control' in error_msg and match:
-                        wait_time = int(match.group(1)) + 1
-                        print(f"  Waiting {wait_time}s...")
-                        time.sleep(wait_time)
-                    else:
-                        time.sleep(2)
+                    # A typed flood-control rejection proves no page was
+                    # created. Network/response failures may have committed:
+                    # repeating createPage could make a duplicate page.
+                    if RetryAfterError is not None and isinstance(e, RetryAfterError):
+                        if attempt < max_retries - 1:
+                            time.sleep(e.retry_after + 1)
+                            continue
+                    raise RuntimeError(
+                        f"Failed to publish Part {part_num}/{total_parts}: {type(e).__name__}\n"
+                        f"Successfully published: {len(pages_info)} pages. First page: {pages_info[0]['url'] if pages_info else 'none'}; "
+                        "reconcile Telegraph pages before retrying"
+                    ) from e
 
         # Link pages if multiple
         self._link_pages(pages_info, author=author)
