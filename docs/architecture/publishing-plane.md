@@ -53,6 +53,10 @@ Public Preview URL
 依据：[Telegraph createPage / editPage 官方契约](https://telegra.ph/api)，
 两者的 content 上限均为 64 KB；客户端序列化使用 ensure_ascii=False。
 
+`createPage` 没有请求幂等键。仅在 Telegraph 明确返回带等待时间的限流拒绝时重试；
+连接中断、超时或响应丢失可能已经建页，立即停止并报告已确认的首页 URL，
+由调用方先核对账户页面和分页结果，再决定是否重试。分页中途失败也遵守此规则。
+
 ## AGENTS 约束
 
 仓库长期约束与禁止项见 [AGENTS.md](../../AGENTS.md)。

@@ -768,9 +768,10 @@ class TestFloodControlRetry(unittest.TestCase):
     @patch('telepress.core.time.sleep')
     def test_flood_control_retry_success(self, mock_sleep):
         """Test that flood control triggers retry with proper wait time."""
+        from telegraph.exceptions import RetryAfterError
         # First call raises flood control, second succeeds
         self.mock_client.create_page.side_effect = [
-            Exception("Flood control exceeded. Retry in 5 seconds"),
+            RetryAfterError(5),
             {'url': 'http://url', 'path': 'path'}
         ]
         
@@ -790,8 +791,9 @@ class TestFloodControlRetry(unittest.TestCase):
     @patch('telepress.core.time.sleep')
     def test_flood_control_max_retries_exceeded(self, mock_sleep):
         """Test that max retries raises error."""
+        from telegraph.exceptions import RetryAfterError
         # All calls fail with flood control - use side_effect function to always raise
-        self.mock_client.create_page.side_effect = Exception("Flood control exceeded. Retry in 5 seconds")
+        self.mock_client.create_page.side_effect = RetryAfterError(5)
         
         with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
             f.write("Short content")
@@ -801,8 +803,30 @@ class TestFloodControlRetry(unittest.TestCase):
             with self.assertRaises(RuntimeError) as ctx:
                 self.publisher.publish_markdown(tmp_path, title="Test")
             self.assertIn("Failed to publish Part 1", str(ctx.exception))
+            self.assertEqual(self.mock_client.create_page.call_count, 5)
         finally:
             os.unlink(tmp_path)
+
+    @patch('telepress.core.time.sleep')
+    def test_lost_response_does_not_repeat_create(self, mock_sleep):
+        self.mock_client.create_page.side_effect = TimeoutError("response lost")
+        with self.assertRaises(RuntimeError) as ctx:
+            self.publisher.publish_text("Short content", title="Test")
+        self.assertIn("reconcile Telegraph pages", str(ctx.exception))
+        self.mock_client.create_page.assert_called_once()
+        mock_sleep.assert_not_called()
+
+    @patch('telepress.core.time.sleep')
+    def test_partial_pagination_stops_after_uncertain_second_page(self, mock_sleep):
+        self.mock_client.create_page.side_effect = [
+            {'url': 'https://telegra.ph/part-1', 'path': 'part-1'},
+            TimeoutError("response lost"),
+        ]
+        with self.assertRaises(RuntimeError) as ctx:
+            self.publisher.publish_text("x" * 25_000, title="Test")
+        self.assertIn("First page: https://telegra.ph/part-1", str(ctx.exception))
+        self.assertEqual(self.mock_client.create_page.call_count, 2)
+        self.mock_client.edit_page.assert_not_called()
 
 
 class TestLinkPagesRetry(unittest.TestCase):

@@ -58,3 +58,7 @@ Reuse the existing MarkdownConverter and Telegraph Python client. The
 ## Agent constraints
 
 See [AGENTS.md](../../../AGENTS.md) for the repository-wide long-term constraints.
+`createPage` has no request idempotency key. Retry only an explicit Telegraph
+flood-control rejection with a retry delay. A connection failure, timeout, or
+lost response may have created a page; stop and report the confirmed first-page
+URL so the caller can reconcile account pages and pagination before retrying.
