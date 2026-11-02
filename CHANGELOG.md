@@ -4,6 +4,13 @@ All notable changes to TelePress are documented in this file. The project uses
 [Semantic Versioning](https://semver.org/) and the changelog is maintained by
 Release Please from Conventional Commits.
 
+## [0.18.1](https://github.com/redtidev1918/TelePress/compare/v0.18.0...v0.18.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **publish:** stop uncertain Telegraph page retries ([#83](https://github.com/redtidev1918/TelePress/issues/83)) ([b04d5a6](https://github.com/redtidev1918/TelePress/commit/b04d5a689e653c63b158fb7727efd53482d63793))
+
 ## [0.18.0](https://github.com/redtidev1918/TelePress/compare/v0.17.2...v0.18.0) (2026-10-15)
 
 
